@@ -1,0 +1,11 @@
+dist/*
+dist
+# ./dist/**
+# ./data/*
+# ./data/**
+data/
+# ./node_modules/
+# ./node_modules/**
+node_modules/
+public/pics/*
+public/pics/

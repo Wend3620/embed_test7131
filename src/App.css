@@ -1,0 +1,242 @@
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap');
+
+.iv-root {
+  font-family: 'IBM Plex Sans', sans-serif;
+  background: #ffffff;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  color: #0f0f0f;
+}
+
+/* ── Header ── */
+.iv-header {
+  background: #ffffff;
+  /* border-bottom: 1.5px solid #000000; */
+  padding: 0.25rem 1.25rem;
+  margin-bottom: -2px;
+  display: flex;
+  align-items: center;
+}
+
+.iv-header-title {
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 2rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: #1b1616;
+}
+
+/* ── Toolbar ── */
+.iv-toolbar {
+  background: #ffffff;
+  /* border-bottom: 1.5px solid #000000; */
+  padding: 0.25rem 1.25rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+/* ── Mode toggle buttons ── */
+.iv-mode-toggle {
+  display: flex;
+  margin-right: 0.25rem;
+}
+
+.iv-mode-btn {
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 0.75rem;
+  font-weight: 500;
+  height: 2rem;
+  padding: 0 0.65rem;
+  border: 1px solid #c71616;
+  background: #ffffff;
+  color: #c71616;
+  cursor: pointer;
+  letter-spacing: 0.02em;
+  transition: background 0.1s, color 0.1s;
+}
+
+.iv-mode-btn:first-child {
+  border-radius: 2px 0 0 2px;
+  border-right: none;
+}
+
+.iv-mode-btn:last-child {
+  border-radius: 0 2px 2px 0;
+}
+
+.iv-mode-btn.active {
+  background: #c71616;
+  color: #ffffff;
+}
+
+.iv-mode-btn:not(.active):hover {
+  background: #f0f0f0;
+}
+
+.iv-toolbar [data-radix-select-trigger],
+.iv-toolbar button[role="combobox"] {
+  font-family: 'IBM Plex Sans', sans-serif !important;
+  font-size: 0.8rem !important;
+  height: 2rem !important;
+  min-width: 120px !important;
+  border-bottom: 3px solid #c71616 !important;
+  border-radius: 0px !important;
+  background: #ffffff !important;
+  color: #0f0f0f !important;
+  box-shadow: none !important;
+}
+
+/* ── Content ── */
+.iv-content {
+  flex: 1;
+  padding: 0rem 1rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.iv-filename {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.72rem;
+  color: #555;
+  display: flex;
+  gap: 0.4rem;
+  margin-left: 1.4rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.iv-filename-value {
+  color: #0f0f0f;
+  font-weight: 500;
+}
+
+/* ── Image panel ── */
+.iv-panel {
+  flex: 1;
+  height: 85vh;
+  border: 2px solid #c71616;
+  border-radius: 0px;
+  margin-left: 4px;
+  width: 80vw;
+  background: #ffffff;
+  display: flex;
+  align-items:  flex-start;
+  justify-content: left;
+  position: relative;
+  /* overflow: hidden; */
+}
+
+.iv-img {
+  margin-top: 2rem;
+  max-width: 80vw;
+  height: 80vh;
+  object-fit: cover;
+  border-radius: 2px;
+}
+
+/* ── Divider & Info panel ── */
+.iv-divider {
+  width: 1.5px;
+  align-self: stretch;
+  background: #000000;
+  flex-shrink: 0;
+}
+
+.iv-info {
+  padding: 1rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.75rem;
+  overflow-y: auto;
+}
+
+.iv-info-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.iv-info-key {
+  color: #424242;
+  font-size: 0.68rem;
+  text-transform: capitalize;
+  letter-spacing: 0.05em;
+}
+
+.iv-info-val {
+  color: #0f0f0f;
+  font-weight: 500;
+}
+
+/* ── Placeholder ── */
+.iv-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin: auto;
+  gap: 1rem;
+  color: #999;
+  text-align: center;
+  padding: 2rem;
+}
+
+.iv-placeholder-icon {
+  width: 156px;
+  height: 156px;
+  border: 1.5px solid #ccc;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ccc;
+}
+
+.iv-placeholder-label {
+  font-size: 1rem;
+  color: #aaa;
+  font-family: 'IBM Plex Mono', monospace;
+  letter-spacing: 0.02em;
+}
+
+.iv-placeholder-fname {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.68rem;
+  color: #bbb;
+  border: 1px dashed #ddd;
+  border-radius: 3px;
+  padding: 0.35rem 0.7rem;
+}
+
+
+
+/* ── shadcn dropdown overrides ── */
+[data-radix-popper-content-wrapper] {
+  z-index: 9999 !important;
+
+}
+
+[role="listbox"] {
+  width: 10px ;
+  font-family: 'IBM Plex Sans', sans-serif !important;
+  font-size: 0.8rem !important;
+  border: 0px solid #000 !important;
+  border-radius: 0px !important;
+}
+
+[role="option"] {
+  font-size: 0.8rem !important;
+  padding: 0.3rem 0.6rem !important;
+  cursor: pointer !important;
+}
+
+[role="option"]:hover,
+[role="option"][data-highlighted] {
+  background: #c71616 !important;
+  color: #fff !important;
+}
