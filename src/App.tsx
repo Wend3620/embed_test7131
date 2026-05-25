@@ -57,6 +57,7 @@ export default function App() {
   });
   const [erroredFile, setErroredFile] = useState<string | null>(null);
   const [info, setInfo] = useState<Record<string, unknown> | null>(null);
+  const [showHtmlPanel, setShowHtmlPanel] = useState(true);
 
 
 
@@ -98,6 +99,15 @@ export default function App() {
   
         {/* ── Toolbar ── */}
         <div className="iv-toolbar">
+
+          {/* Trial 1 panel toggle */}
+          <button
+            className={`iv-panel-btn${showHtmlPanel ? " active" : ""}`}
+            onClick={() => setShowHtmlPanel((p) => !p)}
+            title="Toggle Trial 1 panel"
+          >
+            Trial 1
+          </button>
 
           {/* Mode toggle */}
           <div className="iv-mode-toggle">
@@ -142,9 +152,18 @@ export default function App() {
           </div>
         {/* ── Viewer ── */}
         <main className="iv-content">
-          
+
           {/* Image panel */}
           <div className="iv-panel">
+            {showHtmlPanel && (
+              <iframe src="/data/trial1.html" title="Trial 1" 
+              className="iv-html-iframe" />
+              // style={{ border: 'none', display: 'block',
+              //       flexGrow: 10, overflow: 'hidden', 
+              //       position: 'static', marginTop: -10}} /> 
+              //className="iv-html-iframe" 
+            )}
+            {showHtmlPanel && <div className="iv-divider" />}
             {filename && !showPlaceholder && (
               <img
                 src={`${filename}`}
