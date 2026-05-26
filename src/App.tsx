@@ -9,6 +9,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import "./App.css";
+import SpectralPanel from "./SpectralPanel";
 // import { time } from "console";
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -49,6 +50,10 @@ const LABELS: Record<OptionKey, string> = {
   var:     "Var",
 };
 
+const MAP_RADIUS_PX   = 600; // radius of 60°N boundary circle in 1500×1500 image px
+const MAP_CENTER_X_PX = 640; // x-coordinate of circle center in 1500×1500 image px (< 750 if colorbar is on the right)
+const MAP_CENTER_Y_PX = 785; // y-coordinate of circle center in 1500×1500 image px
+
 // ── Component ──────────────────────────────────────────────────────────────
 export default function App() {
   const [mode, setMode] = useState<Mode>("month");
@@ -57,9 +62,26 @@ export default function App() {
   });
   const [erroredFile, setErroredFile] = useState<string | null>(null);
   const [info, setInfo] = useState<Record<string, unknown> | null>(null);
-  const [showHtmlPanel, setShowHtmlPanel] = useState(true);
+  const [showHtmlPanel, setShowHtmlPanel] = useState(false);
+  const [panelCoords, setPanelCoords] = useState({ lat: 65, lon: -130 });
+  const [hoverCoords, setHoverCoords] = useState<{ lat: number; lon: number } | null>(null);
+  const [mousePos, setMousePos] = useState<{ x: number; y: number } | null>(null);
 
 
+
+  function mapClick(e: React.MouseEvent<HTMLImageElement>) {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const scale = Math.max(rect.width, rect.height) / 1470;
+    const imgX = 750 + (e.clientX - rect.left - rect.width  / 2) / scale;
+    const imgY = 750 + (e.clientY - rect.top  - rect.height / 2) / scale;
+    const dx = imgX - MAP_CENTER_X_PX;
+    const dy = imgY - MAP_CENTER_Y_PX;
+    const r  = Math.sqrt(dx * dx + dy * dy);
+    if (r > MAP_RADIUS_PX || r === 0) return null;
+    const lat = Math.acos(r / (2 * MAP_RADIUS_PX)) * 180 / Math.PI;
+    const lon = Math.atan2(dx, dy) * 180 / Math.PI;
+    return { lat: Math.round(lat * 10) / 10, lon: Math.round(lon * 10) / 10 };
+  }
 
   const handleChange = (key: OptionKey) => (val: string): void =>
     setSel((prev) => ({ ...prev, [key]: val }));
@@ -106,7 +128,7 @@ export default function App() {
             onClick={() => setShowHtmlPanel((p) => !p)}
             title="Toggle Trial 1 panel"
           >
-            Trial 1
+            Spectral Radiance
           </button>
 
           {/* Mode toggle */}
@@ -143,26 +165,14 @@ export default function App() {
         </div>
         {/* Filename label */}
           <div className="iv-filename">
-            {/* <span>Picture (File name:</span> */}
             <span>Available time: PREFIRE-SAT1: July 2024 - , PREFIRE-SAT2: June 2024 -</span>
-            {/* <span className="iv-filename-value">
-              {/* {filename ?? placeholderFname} 
-            </span> */}
-            
           </div>
         {/* ── Viewer ── */}
         <main className="iv-content">
 
           {/* Image panel */}
           <div className="iv-panel">
-            {showHtmlPanel && (
-              <iframe src="/data/trial1.html" title="Trial 1" 
-              className="iv-html-iframe" />
-              // style={{ border: 'none', display: 'block',
-              //       flexGrow: 10, overflow: 'hidden', 
-              //       position: 'static', marginTop: -10}} /> 
-              //className="iv-html-iframe" 
-            )}
+            {showHtmlPanel && <SpectralPanel lat={panelCoords.lat} lon={panelCoords.lon} />}
             {showHtmlPanel && <div className="iv-divider" />}
             {filename && !showPlaceholder && (
               <img
@@ -170,8 +180,20 @@ export default function App() {
                 alt={filename}
                 className="iv-img"
                 onError={() => setErroredFile(filename)}
-                style={sel.proj === "Global" ? {maxHeight: "65vh" } : {}}
-              /> 
+                style={{
+                  ...(sel.proj === "Global" ? { maxHeight: "65vh" } : {}),
+                  ...(sel.proj === "North pole" ? { cursor: "crosshair" } : {}),
+                }}
+                onMouseMove={sel.proj === "North pole"
+                  ? (e) => { setHoverCoords(mapClick(e)); setMousePos({ x: e.clientX, y: e.clientY }); }
+                  : undefined}
+                onMouseLeave={sel.proj === "North pole"
+                  ? () => { setHoverCoords(null); setMousePos(null); }
+                  : undefined}
+                onClick={sel.proj === "North pole"
+                  ? (e) => { const c = mapClick(e); if (c) setPanelCoords(c); }
+                  : undefined}
+              />
             )}
             
             {!showPlaceholder &&<div className="iv-divider" />}
@@ -213,6 +235,14 @@ export default function App() {
           </div>
 
         </main>
+        {hoverCoords && mousePos && (
+          <div
+            className="iv-map-tooltip"
+            style={{ left: mousePos.x + 14, top: mousePos.y + 14 }}
+          >
+            {`${hoverCoords.lat.toFixed(1)}°N  ${Math.abs(hoverCoords.lon).toFixed(1)}°${hoverCoords.lon >= 0 ? "E" : "W"}`}
+          </div>
+        )}
       </div>
   );
 }

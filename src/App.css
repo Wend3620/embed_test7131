@@ -141,17 +141,6 @@
   font-weight: 500;
 }
 
-/* ── HTML iframe (flex item inside iv-panel) ── */
-.iv-html-iframe {
-  flex: 1 1 0;
-  align-self: stretch;
-  display: block;
-  border: none;
-  position:static;
-  min-width: 0;
-  min-height: 0;
-  overflow: hidden;
-}
 
 /* ── Image panel ── */
 .iv-panel {
@@ -276,4 +265,18 @@
 [role="option"][data-highlighted] {
   background: #c71616 !important;
   color: #fff !important;
+}
+
+.iv-map-tooltip {
+  position: fixed;
+  pointer-events: none;
+  background: #c71616;
+  border: 1px solid #ffffff;
+  color: #fff;
+  font-family: 'Arial', monospace;
+  font-size: 0.72rem;
+  padding: 0.2rem 0.5rem;
+  border-radius: 3px;
+  white-space: nowrap;
+  z-index: 1000;
 }

@@ -25,7 +25,8 @@
     "noUncheckedSideEffectImports": true,
     "paths": {
       "*": ["./*"],
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "zarr": ["./node_modules/zarr/types/zarr.d.ts"]
     }
   },
   "include": ["src"]
