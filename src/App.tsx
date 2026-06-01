@@ -112,8 +112,8 @@ export default function App() {
     <div className="iv-root">
 
         {/* ── Header ── */}
-        <div style={{ height: "7px", backgroundColor: "#b91212", width: "3%", 
-          marginLeft: 22, marginTop: 10, marginBottom: -8, zIndex:20
+        <div style={{ height: "7px", backgroundColor: "#b91212", width: "60px", 
+          marginLeft: 22, marginTop: '1%', marginBottom: -8, zIndex:20
         }} />
         <header className="iv-header">
           <span className="iv-header-title">PREFIRE Quicklook Viewer</span>

@@ -3,15 +3,15 @@ import { openGroup, HTTPStore } from "zarr";
 
 import Plotly from "plotly.js";
 
-// ── Physical constants ──────────────────────────────────────────────────────
+//Physical constants
 const H  = 6.626e-34;   // J·s
 const C  = 2.998e8;     // m/s
 const KB = 1.381e-23;   // J/K
 
-// Original channel indices (0-based) shown on the quicklook maps
+//Original channel indices (0-based) shown on the quicklook maps
 const HIGHLIGHT = new Set([12, 24, 30, 32]);
 
-// ── Helpers ─────────────────────────────────────────────────────────────────
+//Helpers
 function planck(lam_um: number, T: number): number {
   const lam_m = lam_um / 1e6;
   return ((2 * H * C * C) / Math.pow(lam_m, 5)) /
@@ -38,7 +38,7 @@ function pick<T>(arr: T[], indices: number[]): T[] {
   return indices.map(i => arr[i]);
 }
 
-// ── Component ────────────────────────────────────────────────────────────────
+//Component
 interface Props {
   lat?: number;
   lon?: number;
