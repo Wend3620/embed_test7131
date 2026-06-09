@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import {
   Select,
   SelectContent,
@@ -67,6 +67,46 @@ export default function App() {
   const [hoverCoords, setHoverCoords] = useState<{ lat: number; lon: number } | null>(null);
   const [mousePos, setMousePos] = useState<{ x: number; y: number } | null>(null);
 
+  // Spectral-panel aggregation controls
+  const [temporalMean, setTemporalMean] = useState(false);
+  const [showSpatialMenu, setShowSpatialMenu] = useState(false);
+  const emptyBoxInputs = { latMin: "", latMax: "", lonMin: "", lonMax: "" };
+  const defaultHemis = { latMin: "°N", latMax: "°N", lonMin: "°W", lonMax: "°W" } as const;
+  const [boxInputs, setBoxInputs] = useState(emptyBoxInputs);
+  const [boxHemis, setBoxHemis] = useState<Record<keyof typeof emptyBoxInputs, "°N" | "°S" | "°E" | "°W">>(defaultHemis);
+  const [box, setBox] = useState<{ latMin: number; latMax: number; lonMin: number; lonMax: number } | null>(null);
+
+  const toggleHemi = (key: keyof typeof emptyBoxInputs) =>
+    setBoxHemis((prev) => {
+      const cur = prev[key];
+      const next = cur === "°N" ? "°S" : cur === "°S" ? "°N" : cur === "°W" ? "°E" : "°W";
+      return { ...prev, [key]: next };
+    });
+
+  const submitBox = () => {
+    const signed = (key: keyof typeof emptyBoxInputs) => {
+      const m = parseFloat(boxInputs[key]);
+      return boxHemis[key] === "°S" || boxHemis[key] === "°W" ? -m : m;
+    };
+    const v = {
+      latMin: signed("latMin"), latMax: signed("latMax"),
+      lonMin: signed("lonMin"), lonMax: signed("lonMax"),
+    };
+    if (Object.values(v).every(Number.isFinite)) {
+      setBox({
+        latMin: Math.min(v.latMin, v.latMax), latMax: Math.max(v.latMin, v.latMax),
+        lonMin: Math.min(v.lonMin, v.lonMax), lonMax: Math.max(v.lonMin, v.lonMax),
+      });
+      setShowSpatialMenu(false);
+    }
+  };
+  const clearBox = () => {
+    setBox(null);
+    setBoxInputs(emptyBoxInputs);
+    setBoxHemis(defaultHemis);
+    setShowSpatialMenu(false);
+  };
+
 
 
   function mapClick(e: React.MouseEvent<HTMLImageElement>) {
@@ -131,6 +171,73 @@ export default function App() {
             Spectral Radiance
           </button>
 
+          {/* Spectral-panel aggregation controls (only meaningful when the panel is open) */}
+          {showHtmlPanel && (
+            <>
+              {/* Temporal (annual) mean toggle */}
+              <button
+                className={`iv-panel-btn${temporalMean ? " active" : ""}`}
+                onClick={() => setTemporalMean((p) => !p)}
+                title="Plot the annual (temporal) mean spectral radiance"
+              >
+                Temporal Mean
+              </button>
+
+              {/* Spatial averaging dropdown */}
+              <div style={{ position: "relative" }}>
+                <button
+                  className={`iv-panel-btn${box ? " active" : ""}`}
+                  onClick={() => setShowSpatialMenu((p) => !p)}
+                  title="Average spectral radiance over a lat/lon box"
+                >
+                  Spatial Averaging ▾
+                </button>
+                {showSpatialMenu && (
+                  <div
+                    style={{
+                      position: "absolute", top: "calc(100% + 4px)", left: 0, zIndex: 30,
+                      background: "#ffffff", border: "1px solid #c71616", borderRadius: 2,
+                      padding: "10px", display: "grid", gridTemplateColumns: "auto auto",
+                      gap: "6px 12px", alignItems: "center", boxShadow: "0 4px 12px rgba(0,0,0,0.12)",
+                      fontFamily: "'IBM Plex Sans', sans-serif", fontSize: "0.75rem", width: "max-content",
+                    }}
+                  >
+                    {([
+                      ["Lat min", "latMin"], ["Lat max", "latMax"],
+                      ["Lon min", "lonMin"], ["Lon max", "lonMax"],
+                    ] as const).map(([label, key]) => (
+                      <Fragment key={key}>
+                        <label htmlFor={`box-${key}`}>{label}</label>
+                        <div style={{ display: "flex", gap: "4px" }}>
+                          <input
+                            id={`box-${key}`}
+                            type="number"
+                            min={0}
+                            value={boxInputs[key]}
+                            onChange={(e) => setBoxInputs((prev) => ({ ...prev, [key]: e.target.value }))}
+                            style={{ width: "80px", border: "1px solid #ccc", borderRadius: 2, padding: "2px 4px" }}
+                          />
+                          <button
+                            className="iv-panel-btn"
+                            onClick={() => toggleHemi(key)}
+                            title="Toggle hemisphere"
+                            style={{ width: "2rem", padding: 0 }}
+                          >
+                            {boxHemis[key]}
+                          </button>
+                        </div>
+                      </Fragment>
+                    ))}
+                    <div style={{ gridColumn: "1 / -1", display: "flex", gap: "8px", justifyContent: "flex-end", marginTop: 4 }}>
+                      <button className="iv-panel-btn" onClick={submitBox}>Submit</button>
+                      <button className="iv-panel-btn" onClick={clearBox}>Clear</button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+
           {/* Mode toggle */}
           <div className="iv-mode-toggle">
             <button
@@ -172,7 +279,17 @@ export default function App() {
 
           {/* Image panel */}
           <div className="iv-panel">
-            {showHtmlPanel && <SpectralPanel lat={panelCoords.lat} lon={panelCoords.lon} />}
+            {showHtmlPanel && (
+              <SpectralPanel
+                lat={panelCoords.lat}
+                lon={panelCoords.lon}
+                box={box}
+                temporal={temporalMean}
+                sat={LONGNAME.sat[sel.sat]}
+                year={sel.year}
+                month={LONGNAME.month[sel.month]}
+              />
+            )}
             {showHtmlPanel && <div className="iv-divider" />}
             {filename && !showPlaceholder && (
               <img
