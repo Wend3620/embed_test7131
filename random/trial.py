@@ -1,140 +1,207 @@
-import os
-
 from pathlib import Path
 import xarray as xr
 from scipy.stats import binned_statistic_2d
-
+import matplotlib.pyplot as plt
+import cartopy.crs as ccrs
+import cartopy.feature as cfeature
+from cartopy.mpl.ticker import LongitudeFormatter, LatitudeFormatter
 import numpy as np
 import netCDF4 as nc
-def extract_valid_tb_lat_lon(
-    granule_path, 
-    channel_index=12, 
-    pass_direction="both"
+import matplotlib as mpl
+from datetime import datetime
+import os
+
+lat_edges = np.arange(-90, 91, 1)
+lon_edges = np.arange(-180, 181, 1)
+lat_mids = lat_edges[:-1] + 0.5
+lon_mids = lon_edges[:-1] + 0.5
+
+def get_statistic_display_name(statistic_name):
+    """Convert statistic name to display name."""
+    names = {
+        'mean': 'Mean Spectral Radiance',
+        'min': 'Min Spectral Radiance',
+        'max': 'Max Spectral Radiance',
+        'std': 'Standard Deviation of Spectral Radiance'
+    }
+    return names.get(statistic_name, statistic_name.capitalize())
+
+
+def yymm_to_abbr_yyyy(yymm):
+    """Convert yymm (e.g. 2508) to 'Aug 2025'."""
+    dt = datetime.strptime(yymm, "%y%m")
+    return dt.strftime("%b %Y")
+
+def create_orthographic_plot(
+    data, 
+    statistic_name, 
+    pole, 
+    wavelength, 
+    output_path,
+    # count_mask,
+    satellite,
+    season,
+    vmin=None,
+    vmax=None,
+    cmap='inferno'
 ):
-    """Extract valid brightness temperature, latitude, and longitude from a granule."""
-    with nc.Dataset(granule_path, 'r') as ds:
-        bt_full = ds.groups['BT']['spectral_BT'][:]
-        lat = ds.groups['Geometry']['latitude'][:]
-        lon = ds.groups['Geometry']['longitude'][:]
-        quality_raw = ds.groups['BT']['BT_quality_flag'][:]
-        quality = quality_raw[:, :, channel_index] if quality_raw.ndim == 3 else quality_raw
-        
-        min_atrack = min(bt_full.shape[0], lat.shape[0], lon.shape[0], quality.shape[0])
-        bt = bt_full[:min_atrack, :, channel_index]
-        lat = lat[:min_atrack, :]
-        lon = lon[:min_atrack, :]
-        quality = quality[:min_atrack, :]
-
-        valid_mask = (
-            np.isfinite(bt) & np.isfinite(lat) & np.isfinite(lon)
-            & np.isin(quality, [0, 1])
-        )
-        # Get wavelength
-        wavelengths = ds.groups['Radiance']['wavelength'][:]  # [xtrack, spectral]
-        mean_wavelength = wavelengths[:, channel_index].mean()
-
-        # Filter by pass direction
-        pass_type = ds['Geometry']['satellite_pass_type'][:]
-        if pass_direction == "ascending":
-            direction_mask = pass_type == 1
-        elif pass_direction == "descending":
-            direction_mask = pass_type == -1
-        else:
-            direction_mask = np.ones(pass_type.shape, dtype=bool)  # keep all
-
-        # Apply direction mask along the first axis (atrack)
-        lat = lat[direction_mask, :]
-        lon = lon[direction_mask, :]
-        bt = bt[direction_mask, :]
-        valid_mask = valid_mask[direction_mask, :]
-
-        return bt[valid_mask], lat[valid_mask], lon[valid_mask], mean_wavelength
-
-
-def process_granule_directory(granule_dirs, channel_index=12):
     """
-    Loops through all NetCDF granules in the directory.
-    Collects all valid Tb, lat, lon data into lists.
+    Create an orthographic projection plot for North or South Pole.
     
     Parameters:
     -----------
-    granule_dirs : list
-        List of directories containing granule files
-    channel_index : int
-        Channel index to extract (default: 12)
+    data : array
+        2D array of data to plot
+    statistic_name : str
+        Name of statistic ('mean', 'min', 'max', 'std')
+    pole : str
+        'north' or 'south'
+    wavelength : float
+        Wavelength in micrometers
+    output_path : str
+        Full path to save the plot
+    count_mask : array
+        2D boolean array for hatching areas with low counts
+    satellite : str
+        Satellite name (SAT1 or SAT2)
+    season : str
+        Season name (SON, DJF, MAM, JJA)
+    vmin, vmax : float
+        Color scale limits
+    cmap : str
+        Colormap name
     """
-    all_tb = []
-    all_lat = []
-    all_lon = []
-    wavelength = []
+    mpl.rcParams['hatch.linewidth'] = 0.3
     
-    for granule_dir in granule_dirs:
-        for filename in sorted(os.listdir(granule_dir)):
-            if filename.endswith(".nc"):
-                path = os.path.join(granule_dir, filename)
-                try:
-                    bt, lat, lon, mean_wavelength = extract_valid_tb_lat_lon(path, channel_index=channel_index)
-                    all_tb.append(bt)
-                    all_lat.append(lat)
-                    all_lon.append(lon)
-                    wavelength.append(mean_wavelength)
-                except Exception as e:
-                    print(f"Failed to process {filename}: {e}")
-
-    # Concatenate arrays
-    tb_all = np.concatenate(all_tb)
-    lat_all = np.concatenate(all_lat) 
-    lon_all = np.concatenate(all_lon) 
-    wavelength = np.round(np.mean(wavelength), decimals=2)
-
-    # Mask out unrealistic brightness temperature values
-    # Remove values below 100 K and above 500 K
-    realistic_mask = (tb_all >= 100) & (tb_all <= 500)
+    # Determine projection center and extent based on pole
+    if pole == 'north':
+        central_lat = 90
+        central_lon = 0
+        extent = [-180, 180, 60, 90]
+        lat_range = np.arange(60, 91, 10)
+        lat_label_range = np.arange(70, 90, 10)  # Exclude 90°N
+        circle_lats = [70, 80]
+        lat_suffix = 'N'
+    else:  # south
+        central_lat = -90
+        central_lon = 0
+        extent = [-180, 180, -60, -90]
+        lat_range = np.arange(-60, -90, -10)
+        lat_label_range = np.arange(-70, -90, -10)
+        circle_lats = [-70, -80]
+        lat_suffix = 'S'
     
-    # Apply mask to keep arrays in sync
-    tb_all = tb_all[realistic_mask]
-    lat_all = lat_all[realistic_mask]
-    lon_all = lon_all[realistic_mask]
+    # Create meshgrid
+    lon2d, lat2d = np.meshgrid(lon_mids, lat_mids)
     
-    print(f"Masked out {np.sum(~realistic_mask)} unrealistic values")
-    print(f"Remaining data points: {len(tb_all)}")
-    print(f"tb_all range: {tb_all.min():.2f} K to {tb_all.max():.2f} K")
-
-    return tb_all, lat_all, lon_all, wavelength
-
-
-def compute_statistics(tb_all, lat_all, lon_all):
-    """Compute mean, min, max, std, and count statistics."""
-    mean_tb, _, _, _ = binned_statistic_2d(
-        lat_all, lon_all, tb_all,
-        statistic='mean',
-        bins=[lat_edges, lon_edges]
-    )
-
-    count_tb, _, _, _ = binned_statistic_2d(
-        lat_all, lon_all, tb_all,
-        statistic='count',
-        bins=[lat_edges, lon_edges]
-    )
-
-    std_tb, _, _, _ = binned_statistic_2d(
-        lat_all, lon_all, tb_all,
-        statistic='std',
-        bins=[lat_edges, lon_edges]
-    )
-
-    max_tb, _, _, _ = binned_statistic_2d(
-        lat_all, lon_all, tb_all,
-        statistic='max',
-        bins=[lat_edges, lon_edges]
-    )
-
-    min_tb, _, _, _ = binned_statistic_2d(
-        lat_all, lon_all, tb_all,
-        statistic='min',
-        bins=[lat_edges, lon_edges]
-    )
-
-    count_mask = (count_tb > THRESHOLD)
+    # Create figure and axis
+    plt.figure(figsize=(10, 10))
+    ax = plt.axes([0, 0, 1, 1], projection=ccrs.Orthographic(
+        central_latitude=central_lat, 
+        central_longitude=central_lon
+    ))
     
-    return mean_tb, min_tb, max_tb, std_tb, count_mask
+    # Plot the data
+    # Change the colorbar setting here
+    
+    mesh = ax.pcolormesh(
+        lon2d, lat2d, data,
+        cmap=cmap, 
+        shading='auto',
+        transform=ccrs.PlateCarree(),
+        vmin=vmin, 
+        vmax=vmax
+    )
+    
+    # Add hatching over areas with low counts
+    # hatch_overlay = ax.contourf(
+    #     lon2d, lat2d, count_mask.astype(float),
+    #     levels=[0.5, 1.5], 
+    #     hatches=['...'],   
+    #     colors='none',
+    #     transform=ccrs.PlateCarree()
+    # )
+    
+    # Add coastlines and features
+    ax.coastlines()
+    ax.set_extent(extent, crs=ccrs.PlateCarree())
+    ax.add_feature(cfeature.BORDERS, linewidth=0.5)
+    ax.add_feature(cfeature.STATES, linewidth=0.5)
+    
+    # Add latitude circles
+    for lat in circle_lats:
+        circle = plt.Circle((0, 0), abs(90 - abs(lat))/30, fill=False, 
+                           color='white', alpha=0.5, linestyle=':')
+        ax.add_patch(circle)
+    
+    # Add gridlines
+    gl = ax.gridlines(draw_labels=True, linewidth=1, color='white', alpha=0.7)
+    gl.xlabel_style = {'size': 11, 'color': 'black', 'weight': 'bold'}
+    gl.ylabel_style = {'size': 11, 'color': 'black', 'weight': 'bold'}
+    gl.xlocator = plt.FixedLocator(np.arange(-180, 181, 60))
+    gl.ylocator = plt.FixedLocator(lat_range)
+    
+    # Add latitude labels
+    for lat in lat_label_range:
+        proj_coords = ax.projection.transform_point(0, lat, ccrs.PlateCarree())
+        if ax.get_xlim()[0] <= proj_coords[0] <= ax.get_xlim()[1]:
+            ax.text(
+                0, lat, f"{abs(lat)}°{lat_suffix}",
+                transform=ccrs.PlateCarree(),
+                ha='left', va='center',
+                fontsize=11, fontweight='bold',
+                color='white',
+                bbox=dict(boxstyle='round,pad=0.2', facecolor='black', alpha=0.7)
+            )
+    
+    # Set circular boundary
+    theta = np.linspace(0, 2*np.pi, 100)
+    center, radius = [0.5, 0.5], 0.5
+    verts = np.vstack([np.sin(theta), np.cos(theta)]).T
+    circle = mpl.path.Path(verts*radius+center)
+    ax.set_boundary(circle, transform=ax.transAxes)
+    
+    # Set title
+    pole_name = "North" if pole == 'north' else "South"
+    statistic_display = get_statistic_display_name(statistic_name)
+    ax.set_title(f"{satellite} {wavelength}µm {statistic_display}\n{pole_name} Pole - {season}", 
+                 fontsize=17)
+    
+    # Add colorbar
+    cbar = plt.colorbar(mesh, shrink=0.7, pad=0.05, aspect=30)
+    cbar.set_label("Spectral radiance (W/m²/sr/μm)", fontsize=15, labelpad=15)
+    if vmin is not None and vmax is not None:
+        cbar.set_ticks(np.linspace(vmin, vmax, 5))  # 5 evenly spaced ticks including vmin and vmax
+    cbar.ax.tick_params(labelsize=12)
+    
+    # Save plot
+    plt.savefig(output_path, dpi=150, bbox_inches='tight')
+    plt.close()
+    print(f"Saved: {output_path}")
+    
+if __name__ == "__main__":
+    months = []
+    
+    for year in range(2025, 2026):
+        for month in range(1, 13):
+            months.append(f"{str(year)[2:]}{month:02d}")
+    for month in months:
+        for sat in ['sat1', 'sat2']:
+            month_label = yymm_to_abbr_yyyy(month)
+            for spec_num in [12, 24, 30, 32]:
+                ds = xr.load_dataset(f'../data/{sat}_{month[2:4]}{month[0:2]}.zarr')
+                mm = int(month[2:4])
+                yyyy = int('20' + month[0:2])
+                if month not in os.listdir(f'../public/sr_pics/month_plots/'):
+                    os.makedirs(f'../public/sr_pics/month_plots/{month}')
+                create_orthographic_plot(
+                    ds.spectral_radiance.isel(spectral = spec_num), 
+                    'mean', 
+                    'north', 
+                    ds.spectral.values[spec_num],
+                    f'../public/sr_pics/month_plots/{month}/{sat}_{mm}_{yyyy}_np_spec{spec_num}_mean.webp',
+                    sat.capitalize(),
+                    month_label,
+                    vmin=0,  
+                    vmax=5,
+                    cmap='viridis')
