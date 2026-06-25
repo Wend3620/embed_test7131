@@ -10,7 +10,8 @@ const KB = 1.381e-23;   // J/K
 
 // ── Data source ──────────────────────────────────────────────────────────────
 // CHANGE THIS when the data source directory moves.
-const DATA_DIR = `${window.location.origin}/data`;
+// const DATA_DIR = `${window.location.origin}/data`;
+const DATA_DIR = `data`;
 // Files are named sat#_mmyy.zarr (e.g. sat1_1225.zarr → sat1, month 12, year 2025).
 const zarrUrl = (sat: string, yy: string, mm: string) => `${DATA_DIR}/${sat}_${mm}${yy}.zarr`;
 const monthsInSeason = (season: string) => {
