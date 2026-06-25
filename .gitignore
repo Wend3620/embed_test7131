@@ -3,9 +3,17 @@ dist
 # ./dist/**
 # ./data/*
 # ./data/**
-data/
+
+# data/
+
 # ./node_modules/
 # ./node_modules/**
 node_modules/
 public/pics/*
 public/pics/
+data/*.nc
+data/*.zip
+data/raw
+data/TestingData
+data/*.html
+data/*.npy

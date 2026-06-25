@@ -181,27 +181,83 @@ def create_orthographic_plot(
     
 if __name__ == "__main__":
     months = []
-    
-    for year in range(2025, 2026):
-        for month in range(1, 13):
-            months.append(f"{str(year)[2:]}{month:02d}")
-    for month in months:
-        for sat in ['sat1', 'sat2']:
-            month_label = yymm_to_abbr_yyyy(month)
-            for spec_num in [12, 24, 30, 32]:
-                ds = xr.load_dataset(f'../data/{sat}_{month[2:4]}{month[0:2]}.zarr')
-                mm = int(month[2:4])
-                yyyy = int('20' + month[0:2])
-                if month not in os.listdir(f'../public/sr_pics/month_plots/'):
-                    os.makedirs(f'../public/sr_pics/month_plots/{month}')
+    area = 'north'
+    seasons = {
+        'DJF': [12, 1, 2],
+        'MAM': [3, 4, 5],
+        'JJA': [6, 7, 8],
+        'SON': [9, 10, 11],
+    }
+
+    for sat in ['sat1', 'sat2']:
+        for spec_num in [12, 24, 30, 32]:
+            for season_name, season_months in seasons.items():
+                seasonal_fields = []
+                season_years = []
+
+                for year in range(2025, 2026):
+                    for month in season_months:
+                        if month == 12:
+                            year_to_use = year - 1
+                        else:
+                            year_to_use = year
+                        ds = xr.load_dataset(f'../data/{sat}_{str(month).zfill(2)}{str(year_to_use)[2:]}.zarr')
+                        
+                        seasonal_fields.append(ds)
+                        season_years.append(year)
+
+                if not seasonal_fields:
+                    continue
+
+                data_mean = xr.concat(seasonal_fields, dim='time').mean(dim='time')
+                if area == 'north':
+                    data_plot = data_mean.spectral_radiance.isel(spectral=spec_num).sel(lat=slice(60, 90))
+                else:
+                    data_plot = data_mean.spectral_radiance.isel(spectral=spec_num).sel(lat=slice(-90, -60))
+                vmin = max((np.floor(np.nanquantile(data_plot, 0.01) * 10) / 10), 0)
+                vmax = max((np.ceil(np.nanquantile(data_plot, 0.99) * 10) / 10), 0)
+
+                out_dir = f'../public/sr_pics/season_plots/{season_name}{str(year)[2:]}'
+                os.makedirs(out_dir, exist_ok=True)
+
                 create_orthographic_plot(
-                    ds.spectral_radiance.isel(spectral = spec_num), 
-                    'mean', 
-                    'north', 
-                    ds.spectral.values[spec_num],
-                    f'../public/sr_pics/month_plots/{month}/{sat}_{mm}_{yyyy}_np_spec{spec_num}_mean.webp',
+                    data_mean.spectral_radiance.isel(spectral = spec_num),
+                    'mean',
+                    area,
+                    spec_num,
+                    f'{out_dir}/{sat}_{season_name}_{year}_np_spec{spec_num}_mean.webp',
                     sat.capitalize(),
-                    month_label,
-                    vmin=0,  
-                    vmax=5,
+                    season_name,
+                    vmin=vmin,
+                    vmax=vmax,
                     cmap='viridis')
+    # for year in range(2025, 2026):
+    #     for month in range(1, 13):
+    #         months.append(f"{str(year)[2:]}{month:02d}")
+    # for month in months:
+    #     for sat in ['sat1', 'sat2']:
+    #         month_label = yymm_to_abbr_yyyy(month)
+    #         for spec_num in [12, 24, 30, 32]:
+    #             ds = xr.load_dataset(f'../data/{sat}_{month[2:4]}{month[0:2]}.zarr')
+    #             mm = int(month[2:4])
+    #             yyyy = int('20' + month[0:2])
+    #             if f'{month[2:4]}{month[0:2]}' not in os.listdir(f'../public/sr_pics/month_plots/'):
+    #                 os.makedirs(f'../public/sr_pics/month_plots/{month[2:4]}{month[0:2]}')
+    #             if area == 'north':    
+    #                 data_plot = ds.spectral_radiance.isel(spectral=spec_num).sel(lat = slice(60, 90)).values
+    #             if area == 'south':
+    #                 data_plot = ds.spectral_radiance.isel(spectral=spec_num).sel(lat = slice(-90, -60)).values
+            
+    #             vmin = max((np.floor(np.nanquantile(data_plot, 0.01) * 10) / 10), 0)
+    #             vmax = max((np.ceil(np.nanquantile(data_plot, 0.99) * 10) / 10), 0)
+    #             create_orthographic_plot(
+    #                 ds.spectral_radiance.isel(spectral = spec_num), 
+    #                 'mean', 
+    #                 area,
+    #                 ds.spectral.values[spec_num],
+    #                 f'../public/sr_pics/month_plots/{month[2:4]}{month[0:2]}/{sat}_{mm}_{yyyy}_np_spec{spec_num}_mean.webp',
+    #                 sat.capitalize(),
+    #                 month_label,
+    #                 vmin=vmin,  
+    #                 vmax=vmax,
+    #                 cmap='viridis')

@@ -1,5 +1,9 @@
 {
     "Days missing": [
+        "2025-09-07",
+        "2025-09-08",
+        "2025-09-09",
+        "2025-09-10",
         "2025-09-11",
         "2025-09-12",
         "2025-09-13",
@@ -7,5 +11,5 @@
         "2025-09-20",
         "2025-09-21"
     ],
-    "Percentage of anticipated granules completed": "264/454 = 58.15%"
+    "Percentage of anticipated granules completed": "217/453 = 47.90%"
 }

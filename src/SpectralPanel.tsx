@@ -11,9 +11,16 @@ const KB = 1.381e-23;   // J/K
 // ── Data source ──────────────────────────────────────────────────────────────
 // CHANGE THIS when the data source directory moves.
 const DATA_DIR = `${window.location.origin}/data`;
-// Files are named sat#_yymm.zarr (e.g. sat1_2512.zarr → sat1, year 2025, month 12).
-const zarrUrl = (sat: string, yy: string, mm: string) => `${DATA_DIR}/${sat}_${yy}${mm}.zarr`;
-
+// Files are named sat#_mmyy.zarr (e.g. sat1_1225.zarr → sat1, month 12, year 2025).
+const zarrUrl = (sat: string, yy: string, mm: string) => `${DATA_DIR}/${sat}_${mm}${yy}.zarr`;
+const monthsInSeason = (season: string) => {
+  switch (season) {
+    case "DJF": return ["12", "01", "02"];
+    case "MAM": return ["03", "04", "05"];
+    case "JJA": return ["06", "07", "08"];
+    case "SON": return ["09", "10", "11"];
+    default: throw new Error(`Unknown season: ${season}`);
+  }};
 //Original channel indices (0-based) shown on the quicklook maps
 const HIGHLIGHT = new Set([12, 24, 30, 32]);
 const HATCH = new Set([39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62]);
@@ -66,11 +73,13 @@ interface Props {
   sat?: string;         // "sat1"
   year?: string;        // "2025"
   month?: string;       // "12"
+  mode?: string;        // "month" or "season"
+  season?: string;      // "DJF", "MAM", "JJA", "SON"
 }
 
 export default function SpectralPanel({
   lat = 65, lon = -130, box = null, temporal = false,
-  sat = "sat1", year = "2025", month = "12",
+  sat = "sat1", year = "2025", month = "12", mode = "month", season = "DJF"
 }: Props) {
   const plotDiv = useRef<HTMLDivElement>(null);
   const [status, setStatus] = useState<"loading" | "error" | "ready">("loading");
@@ -91,8 +100,11 @@ export default function SpectralPanel({
         const yy = year.slice(-2);
         const months = temporal
           ? Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, "0"))
-          : [month.padStart(2, "0")];
-        const urls = months.map(mm => zarrUrl(sat, yy, mm));
+          : mode === "month"
+            ? [month.padStart(2, "0")]
+            : monthsInSeason(season);
+        // URLs for the selected months (seasonal mean may cross year boundary)
+        const urls = months.map(mm => zarrUrl(sat, parseInt(mm)===12&&mode==="season" ? `${parseInt(year) - 1}`.slice(-2) : yy, mm));
 
         // Coordinates + wavelength come from the first store (shared grid).
         const root0 = await openGroup(new HTTPStore(urls[0]), "", "r");
@@ -232,24 +244,23 @@ export default function SpectralPanel({
             hovertemplate: barHov,
             xaxis: "x", yaxis: "y",
           },
-           // ── Row 1: hatched bars (not on maps) ──
-
-          { 
-            type: "bar",
-            x: pick(wl_v, idx_hatch), y: pick(rad_v, idx_hatch), width: pick(widths, idx_hatch),
-            marker: { color: "lightgray", pattern: { shape: "x", size: 10, fgcolor: "gray", bgcolor: "lightgray" } },
-            name: "Hatched channels",
-            customdata: pick(cd, idx_hatch),
-            hovertemplate: barHov,
-            xaxis: "x", yaxis: "y",
-          },
           // ── Row 1: other radiance bars ──
           {
             type: "bar",
             x: pick(wl_v, idx_ot), y: pick(rad_v, idx_ot), width: pick(widths, idx_ot),
             marker: { color: "darkorange" },
-            name: "Other channels",
+            name: "Well-calibrated channels",
             customdata: pick(cd, idx_ot),
+            hovertemplate: barHov,
+            xaxis: "x", yaxis: "y",
+          },
+          // ── Row 1: hatched bars (not on maps) ──
+          { 
+            type: "bar",
+            x: pick(wl_v, idx_hatch), y: pick(rad_v, idx_hatch), width: pick(widths, idx_hatch),
+            marker: { color: "lightgray", pattern: { shape: "x", size: 10, fgcolor: "gray", bgcolor: "lightgray" } },
+            name: "Less-calibrated channels",
+            customdata: pick(cd, idx_hatch),
             hovertemplate: barHov,
             xaxis: "x", yaxis: "y",
           },
@@ -309,7 +320,7 @@ export default function SpectralPanel({
         const locStr = box
           ? `box ${fmtLat(box.latMin)}–${fmtLat(box.latMax)}, ${fmtLon(box.lonMin)}–${fmtLon(box.lonMax)}`
           : `${fmtLat(latData[latIdx])}, ${fmtLon(lonData[lonIdx])}`;
-        const titlePrefix = temporal ? "Annual-mean " : "";
+        const titlePrefix = temporal ? "Annual-mean " : mode === "month" ? "" : `${season}-mean `;
 
         const layout: Partial<Plotly.Layout> = {
           bargap: 0,
@@ -335,7 +346,7 @@ export default function SpectralPanel({
           // Row 2 x axis (wavelength label)
           xaxis2: { domain: [0, 1], title: { text: "Wavelength (μm)" }, anchor: "y3" },
           // Row 2 y (standard deviation)
-          yaxis3: { title: { text: "Std of Spectral Radiance"}, domain: [0, 0.33], anchor: "x2" },
+          yaxis3: { title: { text: "Std dev of Spectral Radiance"}, domain: [0, 0.33], anchor: "x2" },
           autosize: true,
           paper_bgcolor: "#ffffff",
           plot_bgcolor:  "#ffffff",

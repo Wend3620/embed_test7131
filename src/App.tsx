@@ -137,11 +137,15 @@ export default function App() {
   const time_name = mode === "month" ?
    `${timeVal.padStart(2, "0")}${sel.year.slice(-2)}` : 
    `${LONGNAME.season[sel.season]}${sel.year.slice(-2)}`;
-  const filename: string | null = allSelected
+  const BTfilename: string | null = allSelected
     ? `pics/${mode}_plots/${time_name}/${LONGNAME.sat[sel.sat]}_${timeVal}_${
       sel.year}_${LONGNAME.proj[sel.proj]}_ch${LONGNAME.channel[sel.channel]}_${LONGNAME.var[sel.var] || sel.var}.webp`
     : null;
-
+  const SRfilename: string | null = allSelected
+    ? `sr_pics/${mode}_plots/${time_name}/${LONGNAME.sat[sel.sat]}_${timeVal}_${
+      sel.year}_${LONGNAME.proj[sel.proj]}_spec${LONGNAME.channel[sel.channel]}_${LONGNAME.var[sel.var] || sel.var}.webp`
+    : null;
+  const filename = showHtmlPanel ? SRfilename : BTfilename;
   const showPlaceholder = !filename || filename === erroredFile;
 
   // const placeholderFname = mode === "month"
@@ -288,6 +292,8 @@ export default function App() {
                 sat={LONGNAME.sat[sel.sat]}
                 year={sel.year}
                 month={LONGNAME.month[sel.month]}
+                mode = {mode}
+                season = {LONGNAME.season[sel.season]}
               />
             )}
             {showHtmlPanel && <div className="iv-divider" />}
