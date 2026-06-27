@@ -9,9 +9,11 @@ const C  = 2.998e8;     // m/s
 const KB = 1.381e-23;   // J/K
 
 // ── Data source ──────────────────────────────────────────────────────────────
-// CHANGE THIS when the data source directory moves.
-// const DATA_DIR = `${window.location.origin}/data`;
-const DATA_DIR = `data`;
+// Public assets are served from ./public, so data is available at /data.
+// Use an absolute URL to avoid Invalid URL errors in URL constructors.
+// BASE_URL is "/embed_test7131/" in the deployed build and "/" in dev (it always
+// has a trailing slash), so this resolves to the correct subpath on GitHub Pages.
+const DATA_DIR = `${window.location.origin}${import.meta.env.BASE_URL}data`;
 // Files are named sat#_mmyy.zarr (e.g. sat1_1225.zarr → sat1, month 12, year 2025).
 const zarrUrl = (sat: string, yy: string, mm: string) => `${DATA_DIR}/${sat}_${mm}${yy}.zarr`;
 const monthsInSeason = (season: string) => {

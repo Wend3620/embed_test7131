@@ -184,7 +184,7 @@ export default function App() {
                 onClick={() => setTemporalMean((p) => !p)}
                 title="Plot the annual (temporal) mean spectral radiance"
               >
-                Temporal Mean
+                Annual Mean
               </button>
 
               {/* Spatial averaging dropdown */}
