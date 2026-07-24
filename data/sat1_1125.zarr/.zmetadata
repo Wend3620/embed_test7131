@@ -1,0 +1,281 @@
+{
+    "metadata": {
+        ".zattrs": {
+            "description": "Gridded mean, std, count, min, max of spectral radiance binned to a 1.0\u00b0 global grid for 2025-11. time_grid entries list ctimes of all observations contributing to each cell.",
+            "satellite": "sat1",
+            "year_month": "2025-11"
+        },
+        ".zgroup": {
+            "zarr_format": 2
+        },
+        "lat/.zarray": {
+            "chunks": [
+                180
+            ],
+            "compressor": {
+                "blocksize": 0,
+                "clevel": 5,
+                "cname": "lz4",
+                "id": "blosc",
+                "shuffle": 1
+            },
+            "dtype": "<f8",
+            "fill_value": "NaN",
+            "filters": null,
+            "order": "C",
+            "shape": [
+                180
+            ],
+            "zarr_format": 2
+        },
+        "lat/.zattrs": {
+            "_ARRAY_DIMENSIONS": [
+                "lat"
+            ],
+            "units": "degrees_north"
+        },
+        "lon/.zarray": {
+            "chunks": [
+                360
+            ],
+            "compressor": {
+                "blocksize": 0,
+                "clevel": 5,
+                "cname": "lz4",
+                "id": "blosc",
+                "shuffle": 1
+            },
+            "dtype": "<f8",
+            "fill_value": "NaN",
+            "filters": null,
+            "order": "C",
+            "shape": [
+                360
+            ],
+            "zarr_format": 2
+        },
+        "lon/.zattrs": {
+            "_ARRAY_DIMENSIONS": [
+                "lon"
+            ],
+            "units": "degrees_east"
+        },
+        "spectral/.zarray": {
+            "chunks": [
+                63
+            ],
+            "compressor": {
+                "blocksize": 0,
+                "clevel": 5,
+                "cname": "lz4",
+                "id": "blosc",
+                "shuffle": 1
+            },
+            "dtype": "<i8",
+            "fill_value": null,
+            "filters": null,
+            "order": "C",
+            "shape": [
+                63
+            ],
+            "zarr_format": 2
+        },
+        "spectral/.zattrs": {
+            "_ARRAY_DIMENSIONS": [
+                "spectral"
+            ]
+        },
+        "spectral_radiance/.zarray": {
+            "chunks": [
+                45,
+                90,
+                32
+            ],
+            "compressor": {
+                "blocksize": 0,
+                "clevel": 5,
+                "cname": "lz4",
+                "id": "blosc",
+                "shuffle": 1
+            },
+            "dtype": "<f4",
+            "fill_value": "NaN",
+            "filters": null,
+            "order": "C",
+            "shape": [
+                180,
+                360,
+                63
+            ],
+            "zarr_format": 2
+        },
+        "spectral_radiance/.zattrs": {
+            "_ARRAY_DIMENSIONS": [
+                "lat",
+                "lon",
+                "spectral"
+            ],
+            "long_name": "Spectral Radiance",
+            "units": "W/m\u00b2/sr/nm"
+        },
+        "spectral_radiance_count/.zarray": {
+            "chunks": [
+                45,
+                90,
+                32
+            ],
+            "compressor": {
+                "blocksize": 0,
+                "clevel": 5,
+                "cname": "lz4",
+                "id": "blosc",
+                "shuffle": 1
+            },
+            "dtype": "<i4",
+            "fill_value": null,
+            "filters": null,
+            "order": "C",
+            "shape": [
+                180,
+                360,
+                63
+            ],
+            "zarr_format": 2
+        },
+        "spectral_radiance_count/.zattrs": {
+            "_ARRAY_DIMENSIONS": [
+                "lat",
+                "lon",
+                "spectral"
+            ],
+            "long_name": "Spectral Radiance Count",
+            "units": "count"
+        },
+        "spectral_radiance_max/.zarray": {
+            "chunks": [
+                45,
+                90,
+                32
+            ],
+            "compressor": {
+                "blocksize": 0,
+                "clevel": 5,
+                "cname": "lz4",
+                "id": "blosc",
+                "shuffle": 1
+            },
+            "dtype": "<f4",
+            "fill_value": "NaN",
+            "filters": null,
+            "order": "C",
+            "shape": [
+                180,
+                360,
+                63
+            ],
+            "zarr_format": 2
+        },
+        "spectral_radiance_max/.zattrs": {
+            "_ARRAY_DIMENSIONS": [
+                "lat",
+                "lon",
+                "spectral"
+            ],
+            "long_name": "Spectral Radiance Maximum",
+            "units": "W/m**2/sr/nm"
+        },
+        "spectral_radiance_min/.zarray": {
+            "chunks": [
+                45,
+                90,
+                32
+            ],
+            "compressor": {
+                "blocksize": 0,
+                "clevel": 5,
+                "cname": "lz4",
+                "id": "blosc",
+                "shuffle": 1
+            },
+            "dtype": "<f4",
+            "fill_value": "NaN",
+            "filters": null,
+            "order": "C",
+            "shape": [
+                180,
+                360,
+                63
+            ],
+            "zarr_format": 2
+        },
+        "spectral_radiance_min/.zattrs": {
+            "_ARRAY_DIMENSIONS": [
+                "lat",
+                "lon",
+                "spectral"
+            ],
+            "long_name": "Spectral Radiance Minimum",
+            "units": "W/m**2/sr/nm"
+        },
+        "spectral_radiance_std/.zarray": {
+            "chunks": [
+                45,
+                90,
+                32
+            ],
+            "compressor": {
+                "blocksize": 0,
+                "clevel": 5,
+                "cname": "lz4",
+                "id": "blosc",
+                "shuffle": 1
+            },
+            "dtype": "<f4",
+            "fill_value": "NaN",
+            "filters": null,
+            "order": "C",
+            "shape": [
+                180,
+                360,
+                63
+            ],
+            "zarr_format": 2
+        },
+        "spectral_radiance_std/.zattrs": {
+            "_ARRAY_DIMENSIONS": [
+                "lat",
+                "lon",
+                "spectral"
+            ],
+            "long_name": "Spectral Radiance Standard Deviation",
+            "units": "W/m**2/sr/nm"
+        },
+        "wavelength/.zarray": {
+            "chunks": [
+                63
+            ],
+            "compressor": {
+                "blocksize": 0,
+                "clevel": 5,
+                "cname": "lz4",
+                "id": "blosc",
+                "shuffle": 1
+            },
+            "dtype": "<f4",
+            "fill_value": "NaN",
+            "filters": null,
+            "order": "C",
+            "shape": [
+                63
+            ],
+            "zarr_format": 2
+        },
+        "wavelength/.zattrs": {
+            "_ARRAY_DIMENSIONS": [
+                "spectral"
+            ],
+            "units": "nm"
+        }
+    },
+    "zarr_consolidated_format": 1
+}
