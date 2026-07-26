@@ -1,0 +1,9 @@
+{
+    "_ARRAY_DIMENSIONS": [
+        "lat",
+        "lon",
+        "spectral"
+    ],
+    "long_name": "Spectral Radiance Minimum",
+    "units": "W/m**2/sr/nm"
+}
