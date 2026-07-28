@@ -1,12 +1,13 @@
 dist/*
 dist
 # ./dist/**
-# ./data/*
-# ./data/**
-
+/data/*
+!/data/GRE_mask.npy
 # ./node_modules/
 # ./node_modules/**
 node_modules/
+# ./public/pics/**
 public/pics/*
 public/pics/
-public/data/
+public/data/*
+# !*/*.nc
