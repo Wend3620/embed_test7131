@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/select";
 import "./App.css";
 import SpectralPanel from "./SpectralPanel";
+import CountMapPanel from "./CountMapPanel";
 // import { time } from "console";
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -169,112 +170,112 @@ export default function App() {
         }} />
         <header className="iv-header">
           <span className="iv-header-title">PREFIRE Quicklook Viewer</span>
-        </header>
-  
+        
         {/* ── Toolbar row 1: tier, variable, aggregation ── */}
-        <div className="iv-toolbar iv-toolbar-top">
+          <div className="iv-toolbar-top iv-toolbar">
 
-          {/* Tier toggle */}
-          <div className="iv-mode-toggle">
-            <button
-              className={`iv-mode-btn${tier === "lite" ? " active" : ""}`}
-              onClick={() => setTier("lite")}
-              title="Brightness temperature maps only"
-            >
-              Lite
-            </button>
-            <button
-              className={`iv-mode-btn${tier === "pro" ? " active" : ""}`}
-              onClick={() => setTier("pro")}
-              title="Add the spectral radiance panel and aggregation controls"
-            >
-              Professional
-            </button>
-          </div>
-
-          {/* Variable selection (Professional only — Lite is brightness temperature) */}
-          {isPro && (
-            <Select value={sel.variable} onValueChange={handleChange("variable")}>
-              <SelectTrigger style={{ width: "205px" }}>
-                <SelectValue placeholder={LABELS.variable} />
-              </SelectTrigger>
-              <SelectContent>
-                {OPTIONS.variable.map((opt) => (
-                  <SelectItem key={opt} value={opt}>
-                    {opt}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
-
-          {/* Spectral-panel aggregation controls (only meaningful when the panel is open) */}
-          {isPro && (
-            <>
-              {/* Temporal (annual) mean toggle */}
+            {/* Tier toggle */}
+            <div className="iv-mode-toggle">
               <button
-                className={`iv-panel-btn${temporalMean ? " active" : ""}`}
-                onClick={() => setTemporalMean((p) => !p)}
-                title="Plot the annual (temporal) mean spectral radiance"
+                className={`iv-mode-btn${tier === "lite" ? " active" : ""}`}
+                onClick={() => setTier("lite")}
+                title="Brightness temperature maps only"
               >
-                Annual Mean
+                Lite
               </button>
+              <button
+                className={`iv-mode-btn${tier === "pro" ? " active" : ""}`}
+                onClick={() => setTier("pro")}
+                title="Add the spectral radiance panel and aggregation controls"
+              >
+                Full
+              </button>
+            </div>
 
-              {/* Spatial averaging dropdown */}
-              <div style={{ position: "relative" }}>
+            {/* Variable selection (Professional only — Lite is brightness temperature) */}
+            {isPro && (
+              <Select value={sel.variable} onValueChange={handleChange("variable")}>
+                <SelectTrigger style={{ width: "205px" }}>
+                  <SelectValue placeholder={LABELS.variable} />
+                </SelectTrigger>
+                <SelectContent >
+                  {OPTIONS.variable.map((opt) => (
+                    <SelectItem key={opt} value={opt}>
+                      {opt}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+
+            {/* Spectral-panel aggregation controls (only meaningful when the panel is open) */}
+            {isPro && (
+              <>
+                {/* Temporal (annual) mean toggle */}
                 <button
-                  className={`iv-panel-btn${box ? " active" : ""}`}
-                  onClick={() => setShowSpatialMenu((p) => !p)}
-                  title="Average spectral radiance over a lat/lon box"
+                  className={`iv-panel-btn${temporalMean ? " active" : ""}`}
+                  onClick={() => setTemporalMean((p) => !p)}
+                  title="Plot the annual (temporal) mean spectral radiance"
                 >
-                  Spatial Averaging ▾
+                  Annual Mean
                 </button>
-                {showSpatialMenu && (
-                  <div
-                    style={{
-                      position: "absolute", top: "calc(100% + 4px)", left: 0, zIndex: 30,
-                      background: "#ffffff", border: "1px solid #c71616", borderRadius: 2,
-                      padding: "10px", display: "grid", gridTemplateColumns: "auto auto",
-                      gap: "6px 12px", alignItems: "center", boxShadow: "0 4px 12px rgba(0,0,0,0.12)",
-                      fontFamily: "'IBM Plex Sans', sans-serif", fontSize: "0.75rem", width: "max-content",
-                    }}
+
+                {/* Spatial averaging dropdown */}
+                <div style={{ position: "relative" }}>
+                  <button
+                    className={`iv-panel-btn${box ? " active" : ""}`}
+                    onClick={() => setShowSpatialMenu((p) => !p)}
+                    title="Average spectral radiance over a lat/lon box"
                   >
-                    {([
-                      ["Lat min", "latMin"], ["Lat max", "latMax"],
-                      ["Lon min", "lonMin"], ["Lon max", "lonMax"],
-                    ] as const).map(([label, key]) => (
-                      <Fragment key={key}>
-                        <label htmlFor={`box-${key}`}>{label}</label>
-                        <div style={{ display: "flex", gap: "4px" }}>
-                          <input
-                            id={`box-${key}`}
-                            type="number"
-                            min={0}
-                            value={boxInputs[key]}
-                            onChange={(e) => setBoxInputs((prev) => ({ ...prev, [key]: e.target.value }))}
-                            style={{ width: "80px", border: "1px solid #ccc", borderRadius: 2, padding: "2px 4px" }}
-                          />
-                          <button
-                            className="iv-panel-btn"
-                            onClick={() => toggleHemi(key)}
-                            title="Toggle hemisphere"
-                            style={{ width: "2rem", padding: 0 }}
-                          >
-                            {boxHemis[key]}
-                          </button>
-                        </div>
-                      </Fragment>
-                    ))}
-                    <div style={{ gridColumn: "1 / -1", display: "flex", gap: "8px", justifyContent: "flex-end", marginTop: 4 }}>
-                      <button className="iv-panel-btn" onClick={submitBox}>Submit</button>
-                      <button className="iv-panel-btn" onClick={clearBox}>Clear</button>
+                    Spatial Averaging ▾
+                  </button>
+                  {showSpatialMenu && (
+                    <div
+                      style={{
+                        position: "absolute", top: "calc(100% + 4px)", left: 0, zIndex: 30,
+                        background: "#ffffff", border: "1px solid #c71616", borderRadius: 2,
+                        padding: "10px", display: "grid", gridTemplateColumns: "auto auto",
+                        gap: "6px 12px", alignItems: "center", boxShadow: "0 4px 12px rgba(0,0,0,0.12)",
+                        fontFamily: "'IBM Plex Sans', sans-serif", fontSize: "0.75rem", width: "max-content",
+                      }}
+                    >
+                      {([
+                        ["Lat min", "latMin"], ["Lat max", "latMax"],
+                        ["Lon min", "lonMin"], ["Lon max", "lonMax"],
+                      ] as const).map(([label, key]) => (
+                        <Fragment key={key}>
+                          <label htmlFor={`box-${key}`}>{label}</label>
+                          <div style={{ display: "flex", gap: "4px" }}>
+                            <input
+                              id={`box-${key}`}
+                              type="number"
+                              min={0}
+                              value={boxInputs[key]}
+                              onChange={(e) => setBoxInputs((prev) => ({ ...prev, [key]: e.target.value }))}
+                              style={{ width: "80px", border: "1px solid #ccc", borderRadius: 2, padding: "2px 4px" }}
+                            />
+                            <button
+                              className="iv-panel-btn"
+                              onClick={() => toggleHemi(key)}
+                              title="Toggle hemisphere"
+                              style={{ width: "2rem", padding: 0 }}
+                            >
+                              {boxHemis[key]}
+                            </button>
+                          </div>
+                        </Fragment>
+                      ))}
+                      <div style={{ gridColumn: "1 / -1", display: "flex", gap: "8px", justifyContent: "flex-end", marginTop: 4 }}>
+                        <button className="iv-panel-btn" onClick={submitBox}>Submit</button>
+                        <button className="iv-panel-btn" onClick={clearBox}>Clear</button>
+                      </div>
                     </div>
-                  </div>
-                )}
-              </div>
-            </>
-          )}
-        </div>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
+        </header>
 
         {/* ── Toolbar row 2: time mode and data selection ── */}
         <div className="iv-toolbar">
@@ -357,16 +358,33 @@ export default function App() {
             )}
             
             {!showPlaceholder &&<div className="iv-divider" />}
+            {!showPlaceholder && (
             <div className="iv-info">
-              {info && !showPlaceholder && Object.entries(info).map(([k, v]) => (
-                <div key={k} className="iv-info-row">
-                  <span className="iv-info-key">{k+':'}</span>
-                  <span className="iv-info-val">
-                    {Array.isArray(v) ? (v.length === 0 ? "—" : v.join(", ")) : String(v)}
-                  </span>
-                </div>
-              ))}
+              <div className="iv-info-rows">
+                {info && Object.entries(info).map(([k, v]) => (
+                  <div key={k} className="iv-info-row">
+                    <span className="iv-info-key">{k+':'}</span>
+                    <span className="iv-info-val">
+                      {Array.isArray(v) ? (v.length === 0 ? "—" : v.join(", ")) : String(v)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+              {/* Observations per 1° grid cell for the selected time, channel and projection */}
+              <div className="iv-info-map">
+                <CountMapPanel
+                  sat={LONGNAME.sat[sel.sat]}
+                  year={sel.year}
+                  month={LONGNAME.month[sel.month]}
+                  mode={mode}
+                  season={LONGNAME.season[sel.season]}
+                  channel={LONGNAME.channel[sel.channel]}
+                  proj={LONGNAME.proj[sel.proj]}
+                  timeLabel={mode === "month" ? `${sel.month.slice(0, 3)} ${sel.year}` : `${sel.season} ${sel.year}`}
+                />
+              </div>
             </div>
+            )}
             <div
               className="iv-placeholder"
               style={{ display: showPlaceholder ? "flex" : "none" }}

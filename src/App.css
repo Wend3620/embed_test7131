@@ -40,7 +40,9 @@
 
 /* Row 1 sits directly above the data-selection row */
 .iv-toolbar-top {
-  padding-bottom: 0;
+  /* padding-bottom: 0.25rem; */
+  margin-left:7px;
+
 }
 
 /* ── Mode toggle buttons ── */
@@ -179,13 +181,33 @@
 
 .iv-info {
   padding: 1rem 1.25rem;
+  width: 15vw;
   max-width: 15vw;
+  flex: 0 0 auto;
+  align-self: stretch;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
   font-family: 'IBM Plex Mono', monospace;
   font-size: 0.75rem;
+}
+
+/* Text rows scroll; the count map stays pinned to the bottom of the panel */
+.iv-info-rows {
+  flex: 1 1 auto;
+  min-height: 0;
   overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.iv-info-map {
+  flex: 0 0 240px;
+  margin-top: auto;
+  min-height: 0;
+  position: relative;
 }
 
 .iv-info-row {

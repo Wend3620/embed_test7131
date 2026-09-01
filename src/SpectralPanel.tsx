@@ -3,27 +3,13 @@ import { openGroup, HTTPStore, slice } from "zarr";
 
 import Plotly from "plotly.js";
 
+import { storeUrls } from "./zarrSource";
+
 //Physical constants
 const H  = 6.626e-34;   // J·s
 const C  = 2.998e8;     // m/s
 const KB = 1.381e-23;   // J/K
 
-// ── Data source ──────────────────────────────────────────────────────────────
-// Public assets are served from ./public, so data is available at /data.
-// Use an absolute URL to avoid Invalid URL errors in URL constructors.
-// BASE_URL is "/embed_test7131/" in the deployed build and "/" in dev (it always
-// has a trailing slash), so this resolves to the correct subpath on GitHub Pages.
-const DATA_DIR = `${window.location.origin}${import.meta.env.BASE_URL}data`;
-// Files are named sat#_mmyy.zarr (e.g. sat1_1225.zarr → sat1, month 12, year 2025).
-const zarrUrl = (sat: string, yy: string, mm: string) => `${DATA_DIR}/${sat}_${mm}${yy}.zarr`;
-const monthsInSeason = (season: string) => {
-  switch (season) {
-    case "DJF": return ["12", "01", "02"];
-    case "MAM": return ["03", "04", "05"];
-    case "JJA": return ["06", "07", "08"];
-    case "SON": return ["09", "10", "11"];
-    default: throw new Error(`Unknown season: ${season}`);
-  }};
 //Original channel indices (0-based) shown on the quicklook maps
 const HIGHLIGHT = new Set([12, 24, 30, 32]);
 const HATCH = new Set([39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62]);
@@ -99,15 +85,9 @@ export default function SpectralPanel({
           temporal ? "Loading annual mean (12 months)…"
                    : box ? "Loading spatial mean…" : "Loading zarr data…");
 
-        // Files to aggregate: 12 months for the annual mean, else the selected month.
-        const yy = year.slice(-2);
-        const months = temporal
-          ? Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, "0"))
-          : mode === "month"
-            ? [month.padStart(2, "0")]
-            : monthsInSeason(season);
-        // URLs for the selected months (seasonal mean may cross year boundary)
-        const urls = months.map(mm => zarrUrl(sat, parseInt(mm)===12&&mode==="season" ? `${parseInt(year) - 1}`.slice(-2) : yy, mm));
+        // Stores to aggregate: 12 months for the annual mean, the season's three
+        // months (may cross a year boundary), else the selected month.
+        const urls = storeUrls({ sat, year, month, mode, season, temporal });
 
         // Coordinates + wavelength come from the first store (shared grid).
         const root0 = await openGroup(new HTTPStore(urls[0]), "", "r");
