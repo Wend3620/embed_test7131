@@ -38,6 +38,11 @@
   align-items: center;
 }
 
+/* Row 1 sits directly above the data-selection row */
+.iv-toolbar-top {
+  padding-bottom: 0;
+}
+
 /* ── Mode toggle buttons ── */
 .iv-mode-toggle {
   display: flex;

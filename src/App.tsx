@@ -15,7 +15,9 @@ import SpectralPanel from "./SpectralPanel";
 // ── Types ──────────────────────────────────────────────────────────────────
 type Mode = "month" | "season";
 
-type OptionKey = "sat" | "month" | "season" | "year" | "channel" | "proj" | "var";
+type Tier = "lite" | "pro";
+
+type OptionKey = "sat" | "month" | "season" | "year" | "channel" | "proj" | "var" | "variable";
 
 type Selection = Record<OptionKey, string>;
 
@@ -38,6 +40,7 @@ const OPTIONS: Record<OptionKey, string[]> = {
   channel: ["Channel 12","Channel 24","Channel 30","Channel 32"],
   proj:    ["North pole","Global","South pole"],
   var:     ["Mean","Max","Min","Std"],
+  variable: ["Brightness temperature","Spectral radiance"],
 };
 
 const LABELS: Record<OptionKey, string> = {
@@ -48,6 +51,7 @@ const LABELS: Record<OptionKey, string> = {
   channel: "Channel",
   proj:    "Proj",
   var:     "Var",
+  variable: "Variable",
 };
 
 const MAP_RADIUS_PX   = 600; // radius of 60°N boundary circle in 1500×1500 image px
@@ -57,12 +61,13 @@ const MAP_CENTER_Y_PX = 785; // y-coordinate of circle center in 1500×1500 imag
 // ── Component ──────────────────────────────────────────────────────────────
 export default function App() {
   const [mode, setMode] = useState<Mode>("month");
+  const [tier, setTier] = useState<Tier>("lite");
   const [sel, setSel] = useState<Selection>({
     sat: "PREFIRE-Sat1", month: "December", season: "DJF", year: "2025", channel: "Channel 12", proj: "North pole", var: "Mean",
+    variable: "Brightness temperature",
   });
   const [erroredFile, setErroredFile] = useState<string | null>(null);
   const [info, setInfo] = useState<Record<string, unknown> | null>(null);
-  const [showHtmlPanel, setShowHtmlPanel] = useState(false);
   const [panelCoords, setPanelCoords] = useState({ lat: 65, lon: -130 });
   const [hoverCoords, setHoverCoords] = useState<{ lat: number; lon: number } | null>(null);
   const [mousePos, setMousePos] = useState<{ x: number; y: number } | null>(null);
@@ -145,7 +150,10 @@ export default function App() {
     ? `sr_pics/${mode}_plots/${time_name}/${LONGNAME.sat[sel.sat]}_${timeVal}_${
       sel.year}_${LONGNAME.proj[sel.proj]}_spec${LONGNAME.channel[sel.channel]}_${LONGNAME.var[sel.var] || sel.var}.webp`
     : null;
-  const filename = showHtmlPanel ? SRfilename : BTfilename;
+  // Professional unlocks the spectral plot and the variable choice; Lite is brightness temperature only.
+  const isPro = tier === "pro";
+  const showSR = isPro && sel.variable === "Spectral radiance";
+  const filename = showSR ? SRfilename : BTfilename;
   const showPlaceholder = !filename || filename === erroredFile;
 
   // const placeholderFname = mode === "month"
@@ -163,20 +171,45 @@ export default function App() {
           <span className="iv-header-title">PREFIRE Quicklook Viewer</span>
         </header>
   
-        {/* ── Toolbar ── */}
-        <div className="iv-toolbar">
+        {/* ── Toolbar row 1: tier, variable, aggregation ── */}
+        <div className="iv-toolbar iv-toolbar-top">
 
-          {/* Trial 1 panel toggle */}
-          <button
-            className={`iv-panel-btn${showHtmlPanel ? " active" : ""}`}
-            onClick={() => setShowHtmlPanel((p) => !p)}
-            title="Toggle Trial 1 panel"
-          >
-            Spectral Radiance
-          </button>
+          {/* Tier toggle */}
+          <div className="iv-mode-toggle">
+            <button
+              className={`iv-mode-btn${tier === "lite" ? " active" : ""}`}
+              onClick={() => setTier("lite")}
+              title="Brightness temperature maps only"
+            >
+              Lite
+            </button>
+            <button
+              className={`iv-mode-btn${tier === "pro" ? " active" : ""}`}
+              onClick={() => setTier("pro")}
+              title="Add the spectral radiance panel and aggregation controls"
+            >
+              Professional
+            </button>
+          </div>
+
+          {/* Variable selection (Professional only — Lite is brightness temperature) */}
+          {isPro && (
+            <Select value={sel.variable} onValueChange={handleChange("variable")}>
+              <SelectTrigger style={{ width: "205px" }}>
+                <SelectValue placeholder={LABELS.variable} />
+              </SelectTrigger>
+              <SelectContent>
+                {OPTIONS.variable.map((opt) => (
+                  <SelectItem key={opt} value={opt}>
+                    {opt}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
 
           {/* Spectral-panel aggregation controls (only meaningful when the panel is open) */}
-          {showHtmlPanel && (
+          {isPro && (
             <>
               {/* Temporal (annual) mean toggle */}
               <button
@@ -241,6 +274,10 @@ export default function App() {
               </div>
             </>
           )}
+        </div>
+
+        {/* ── Toolbar row 2: time mode and data selection ── */}
+        <div className="iv-toolbar">
 
           {/* Mode toggle */}
           <div className="iv-mode-toggle">
@@ -283,7 +320,7 @@ export default function App() {
 
           {/* Image panel */}
           <div className="iv-panel">
-            {showHtmlPanel && (
+            {isPro && (
               <SpectralPanel
                 lat={panelCoords.lat}
                 lon={panelCoords.lon}
@@ -296,7 +333,7 @@ export default function App() {
                 season = {LONGNAME.season[sel.season]}
               />
             )}
-            {showHtmlPanel && <div className="iv-divider" />}
+            {isPro && <div className="iv-divider" />}
             {filename && !showPlaceholder && (
               <img
                 src={`${filename}`}
