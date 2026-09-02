@@ -45,13 +45,13 @@ const OPTIONS: Record<OptionKey, string[]> = {
 };
 
 const LABELS: Record<OptionKey, string> = {
-  sat:     "Sat",
+  sat:     "Satellite",
   month:   "Month",
   season:  "Season",
   year:    "Year",
   channel: "Channel",
-  proj:    "Proj",
-  var:     "Var",
+  proj:    "View",
+  var:     "Data type",
   variable: "Variable",
 };
 
@@ -194,18 +194,21 @@ export default function App() {
 
             {/* Variable selection (Professional only — Lite is brightness temperature) */}
             {isPro && (
-              <Select value={sel.variable} onValueChange={handleChange("variable")}>
-                <SelectTrigger style={{ width: "205px" }}>
-                  <SelectValue placeholder={LABELS.variable} />
-                </SelectTrigger>
-                <SelectContent >
-                  {OPTIONS.variable.map((opt) => (
-                    <SelectItem key={opt} value={opt}>
-                      {opt}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="iv-field">
+                <span className="iv-field-label">{LABELS.variable}</span>
+                <Select value={sel.variable} onValueChange={handleChange("variable")}>
+                  <SelectTrigger style={{ width: "205px" }}>
+                    <SelectValue placeholder={LABELS.variable} />
+                  </SelectTrigger>
+                  <SelectContent >
+                    {OPTIONS.variable.map((opt) => (
+                      <SelectItem key={opt} value={opt}>
+                        {opt}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             )}
 
             {/* Spectral-panel aggregation controls (only meaningful when the panel is open) */}
@@ -298,18 +301,21 @@ export default function App() {
 
           {/* Dropdowns */}
           {dropdownKeys.map((key) => (
-            <Select key={key} value={sel[key]} onValueChange={handleChange(key)} >
-              <SelectTrigger style={{ width: "135px" }} >
-                <SelectValue placeholder={LABELS[key]} />
-              </SelectTrigger>
-              <SelectContent>
-                {OPTIONS[key].map((opt) => (
-                  <SelectItem key={opt} value={opt}>
-                    {opt}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div key={key} className="iv-field">
+              <span className="iv-field-label">{LABELS[key]}</span>
+              <Select value={sel[key]} onValueChange={handleChange(key)} >
+                <SelectTrigger style={{ width: "135px" }} >
+                  <SelectValue placeholder={LABELS[key]} />
+                </SelectTrigger>
+                <SelectContent>
+                  {OPTIONS[key].map((opt) => (
+                    <SelectItem key={opt} value={opt}>
+                      {opt}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           ))}
         </div>
         {/* Filename label */}

@@ -14,7 +14,7 @@
   background: #ffffff;
   /* border-bottom: 1.5px solid #000000; */
   padding: 0.25rem 1.25rem;
-  margin-bottom: -2px;
+  margin-bottom: -8px;
   display: flex;
   align-items: center;
 }
@@ -31,18 +31,35 @@
 .iv-toolbar {
   background: #ffffff;
   /* border-bottom: 1.5px solid #000000; */
-  padding: 0.25rem 1.25rem;
+  padding: 0.05rem 1.25rem;
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
-  align-items: center;
+  align-items: flex-end;
+}
+
+/* ── Labelled dropdown field ── */
+.iv-field {
+  display: flex;
+  flex-direction: column;
+  gap: -2px;
+}
+
+.iv-field-label {
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 0.68rem;
+  color: #424242;
+  letter-spacing: 0.00em;
+  padding-left: 13px;
+  margin-bottom: -8px;
+  z-index: 10;
 }
 
 /* Row 1 sits directly above the data-selection row */
 .iv-toolbar-top {
   /* padding-bottom: 0.25rem; */
   margin-left:7px;
-
+  
 }
 
 /* ── Mode toggle buttons ── */
