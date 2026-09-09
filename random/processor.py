@@ -287,7 +287,10 @@ def create_orthographic_plot(
     season,
     vmin=None,
     vmax=None,
-    cmap='inferno'
+    cmap='inferno',
+    title=None,
+    cbar_label=None,
+    save=True
 ):
     """
     Create an orthographic projection plot for North or South Pole.
@@ -314,6 +317,12 @@ def create_orthographic_plot(
         Color scale limits
     cmap : str
         Colormap name
+    title : str
+        Full title; None builds the default brightness-temperature one
+    cbar_label : str
+        Colorbar label; None keeps "Brightness Temperature (K)"
+    save : bool
+        Whether to save the plot (default: True)
     """
     mpl.rcParams['hatch.linewidth'] = 0.3
     
@@ -408,20 +417,22 @@ def create_orthographic_plot(
     # Set title
     pole_name = "North" if pole == 'north' else "South"
     statistic_display = get_statistic_display_name(statistic_name)
-    ax.set_title(f"{satellite} {wavelength}µm {statistic_display}\n{pole_name} Pole - {season}", 
-                 fontsize=17)
+    if title is None:
+        title = f"{satellite} {wavelength}µm {statistic_display}\n{pole_name} Pole - {season}"
+    ax.set_title(title, fontsize=17)
     
     # Add colorbar
     cbar = plt.colorbar(mesh, shrink=0.7, pad=0.05, aspect=30)
-    cbar.set_label("Brightness Temperature (K)", fontsize=15, labelpad=15)
+    cbar.set_label(cbar_label or "Brightness Temperature (K)", fontsize=15, labelpad=15)
     if vmin is not None and vmax is not None:
         cbar.set_ticks(np.linspace(vmin, vmax, 5))  # 5 evenly spaced ticks including vmin and vmax
     cbar.ax.tick_params(labelsize=12)
     
     # Save plot
-    plt.savefig(output_path, dpi=150, bbox_inches='tight')
-    plt.close()
-    print(f"Saved: {output_path}")
+    if save:
+        plt.savefig(output_path, dpi=150, bbox_inches='tight')
+        plt.close()
+        print(f"Saved: {output_path}")
 
 def create_global_plot(
     data,
@@ -433,7 +444,10 @@ def create_global_plot(
     season,
     vmin=None,
     vmax=None,
-    cmap='inferno'
+    cmap='inferno',
+    title=None,
+    cbar_label=None,
+    save=True
 ):
     """
     Create a global Robinson projection plot.
@@ -458,6 +472,12 @@ def create_global_plot(
         Color scale limits
     cmap : str
         Colormap name
+    title : str
+        Full title; None builds the default brightness-temperature one
+    cbar_label : str
+        Colorbar label; None keeps "Brightness Temperature (K)"
+    save : bool
+        Whether to save the plot (default: True)
     """
     mpl.rcParams['hatch.linewidth'] = 0.3
     
@@ -544,20 +564,22 @@ def create_global_plot(
     
     # Set title
     statistic_display = get_statistic_display_name(statistic_name)
-    ax.set_title(f"{satellite} {wavelength}µm {statistic_display}\n{season}",
-                 fontsize=17)
+    if title is None:
+        title = f"{satellite} {wavelength}µm {statistic_display}\n{season}"
+    ax.set_title(title, fontsize=17)
     
     # Add colorbar
     cbar = plt.colorbar(mesh, shrink=0.8, pad=0.05, aspect=30, orientation='horizontal')
-    cbar.set_label("Brightness Temperature (K)", fontsize=15, labelpad=15)
+    cbar.set_label(cbar_label or "Brightness Temperature (K)", fontsize=15, labelpad=15)
     if vmin is not None and vmax is not None:
         cbar.set_ticks(np.linspace(vmin, vmax, 5))  # 5 evenly spaced ticks including vmin and vmax
     cbar.ax.tick_params(labelsize=12)
     
     # Save plot
-    plt.savefig(output_path, dpi=150, bbox_inches='tight', pad_inches=0.1)
-    plt.close()
-    print(f"Saved: {output_path}")
+    if save == True:
+        plt.savefig(output_path, dpi=150, bbox_inches='tight', pad_inches=0.1)
+        plt.close()
+        print(f"Saved: {output_path}")
 
 
 def main():

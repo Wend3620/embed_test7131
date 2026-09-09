@@ -73,6 +73,10 @@ export default function App() {
   const [hoverCoords, setHoverCoords] = useState<{ lat: number; lon: number } | null>(null);
   const [mousePos, setMousePos] = useState<{ x: number; y: number } | null>(null);
 
+  // Observation-count views: the sidebar filler, and the on-demand map overlay
+  const [countImgError, setCountImgError] = useState(false);
+  const [showCounts, setShowCounts] = useState(false);
+
   // Spectral-panel aggregation controls
   const [temporalMean, setTemporalMean] = useState(false);
   const [showSpatialMenu, setShowSpatialMenu] = useState(false);
@@ -342,25 +346,53 @@ export default function App() {
             )}
             {isPro && <div className="iv-divider" />}
             {filename && !showPlaceholder && (
-              <img
-                src={`${filename}`}
-                alt={filename}
-                className="iv-img"
-                onError={() => setErroredFile(filename)}
-                style={{
-                  ...(sel.proj === "Global" ? { maxHeight: "65vh" } : {}),
-                  ...(sel.proj === "North pole" ? { cursor: "crosshair" } : {}),
-                }}
-                onMouseMove={sel.proj === "North pole"
-                  ? (e) => { setHoverCoords(mapClick(e)); setMousePos({ x: e.clientX, y: e.clientY }); }
-                  : undefined}
-                onMouseLeave={sel.proj === "North pole"
-                  ? () => { setHoverCoords(null); setMousePos(null); }
-                  : undefined}
-                onClick={sel.proj === "North pole"
-                  ? (e) => { const c = mapClick(e); if (c) setPanelCoords(c); }
-                  : undefined}
-              />
+              <div className="iv-map-wrap">
+                <img
+                  src={`${filename}`}
+                  alt={filename}
+                  className="iv-img"
+                  onError={() => setErroredFile(filename)}
+                  style={{
+                    ...(sel.proj === "Global" ? { maxHeight: "65vh" } : {}),
+                    ...(sel.proj === "North pole" ? { cursor: "crosshair" } : {}),
+                  }}
+                  onMouseMove={sel.proj === "North pole"
+                    ? (e) => { setHoverCoords(mapClick(e)); setMousePos({ x: e.clientX, y: e.clientY }); }
+                    : undefined}
+                  onMouseLeave={sel.proj === "North pole"
+                    ? () => { setHoverCoords(null); setMousePos(null); }
+                    : undefined}
+                  onClick={sel.proj === "North pole"
+                    ? (e) => { const c = mapClick(e); if (c) setPanelCoords(c); }
+                    : undefined}
+                />
+
+                {/* Observation counts, computed from the zarr stores only when asked for */}
+                {isPro && (
+                  <button
+                    className={`iv-panel-btn iv-map-toggle${showCounts ? " active" : ""}`}
+                    onClick={() => setShowCounts((p) => !p)}
+                    title="Overlay observation counts per 1° grid cell"
+                  >
+                    Counts
+                  </button>
+                )}
+
+                {isPro && showCounts && (
+                  <div className="iv-map-overlay">
+                    <CountMapPanel
+                      sat={LONGNAME.sat[sel.sat]}
+                      year={sel.year}
+                      month={LONGNAME.month[sel.month]}
+                      mode={mode}
+                      season={LONGNAME.season[sel.season]}
+                      channel={LONGNAME.channel[sel.channel]}
+                      proj={LONGNAME.proj[sel.proj]}
+                      timeLabel={mode === "month" ? `${sel.month.slice(0, 3)} ${sel.year}` : `${sel.season} ${sel.year}`}
+                    />
+                  </div>
+                )}
+              </div>
             )}
             
             {!showPlaceholder &&<div className="iv-divider" />}
@@ -376,18 +408,18 @@ export default function App() {
                   </div>
                 ))}
               </div>
-              {/* Observations per 1° grid cell for the selected time, channel and projection */}
+              {/* Static reference count map; the live version is the map overlay */}
               <div className="iv-info-map">
-                <CountMapPanel
-                  sat={LONGNAME.sat[sel.sat]}
-                  year={sel.year}
-                  month={LONGNAME.month[sel.month]}
-                  mode={mode}
-                  season={LONGNAME.season[sel.season]}
-                  channel={LONGNAME.channel[sel.channel]}
-                  proj={LONGNAME.proj[sel.proj]}
-                  timeLabel={mode === "month" ? `${sel.month.slice(0, 3)} ${sel.year}` : `${sel.season} ${sel.year}`}
-                />
+                {countImgError ? (
+                  <div className="iv-info-map-msg">Count map unavailable</div>
+                ) : (
+                  <img
+                    src="trial_pics/count1.png"
+                    alt="Observation count map"
+                    className="iv-info-map-img"
+                    onError={() => setCountImgError(true)}
+                  />
+                )}
               </div>
             </div>
             )}

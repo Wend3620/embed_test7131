@@ -180,12 +180,38 @@
   overflow: hidden;
 }
 
-.iv-img {
+/* Wraps the quicklook so the Counts button and overlay anchor to the image,
+   not to .iv-panel (which also spans SpectralPanel and the info column). */
+.iv-map-wrap {
+  position: relative;
+  align-self: flex-start;
   margin-top: 2rem;
+  display: flex;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.iv-img {
   max-width: 100%;
   height: 80vh;
   object-fit: cover;
   border-radius: 2px;
+}
+
+/* Positioning only — .iv-panel-btn supplies the look, so this button and
+   Annual Mean can never drift apart. */
+.iv-map-toggle {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  z-index: 6;
+}
+
+.iv-map-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 5; /* below .iv-map-toggle, so the button stays clickable */
+  background: transparent; /* the quicklook stays visible underneath */
 }
 
 /* ── Divider & Info panel ── */
@@ -225,6 +251,23 @@
   margin-top: auto;
   min-height: 0;
   position: relative;
+}
+
+.iv-info-map-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.iv-info-map-msg {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.68rem;
+  color: #999;
+  text-align: center;
 }
 
 .iv-info-row {

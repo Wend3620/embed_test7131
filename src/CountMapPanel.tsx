@@ -5,9 +5,12 @@ import Plotly from "plotly.js";
 
 import { storeUrls } from "./zarrSource";
 
-// The polar quicklooks are drawn over 60°–90° (processor.py `extent`); the small
-// count map matches so the two views line up.
+// The polar quicklooks are drawn over 60°–90° (processor.py `extent`); the count
+// map matches so it reads at the same scale as the quicklook it overlays.
 const POLAR_MIN_ABS_LAT = 60;
+// The overlay sits on top of the quicklook; the marks are drawn semi-transparent
+// so both read at once.
+const OVERLAY_OPACITY = 0.75;
 const NLAT = 180;
 const NLON = 360;
 
@@ -31,6 +34,16 @@ function logTicks(loMax: number): { tickmode: "array"; tickvals: number[]; tickt
     ticktext.push(k < 4 ? String(10 ** k) : `1e${k}`);
   }
   return { tickmode: "array", tickvals, ticktext };
+}
+
+// Horizontal colorbar tucked into the right third of the plot, so it hides as
+// little of the quicklook showing through the transparent overlay as possible.
+function colorBar(maxLog: number) {
+  return {
+    orientation: "h" as const, x: 1, xanchor: "right" as const,
+    y: -0.02, yanchor: "top" as const, thickness: 10, len: 1 / 3,
+    tickfont: { size: 10 }, outlinewidth: 0, ...logTicks(maxLog),
+  };
 }
 
 export default function CountMapPanel({
@@ -104,17 +117,17 @@ export default function CountMapPanel({
         // cell centres so markers and heatmap cells land where processor.py draws them.
         const lat = Float64Array.from(latData, (v) => v + 0.5);
         const lon = Float64Array.from(lonData, (v) => v + 0.5);
-        const title = `Obs count · ch${channel} · ${timeLabel}`;
+        // const title = `Obs count · ch${channel} · ${timeLabel}`;
 
         let maxLog = 0;
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         let traces: any[];
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const layout: any = {
-          margin: { l: 4, r: 4, t: 22, b: 30 },
-          title: { text: title, x: 0, xanchor: "left", font: { size: 10, family: "'IBM Plex Mono', monospace" } },
-          paper_bgcolor: "#ffffff",
-          plot_bgcolor: "#ffffff",
+          margin: { l: 8, r: 8, t: 34, b: 52 },
+          // title: { text: title, x: 0, xanchor: "left", font: { size: 13, family: "'IBM Plex Mono', monospace" } },
+          paper_bgcolor: "rgba(0,0,0,0)",
+          plot_bgcolor: "rgba(0,0,0,0)",
           showlegend: false,
           autosize: true,
         };
@@ -143,11 +156,9 @@ export default function CountMapPanel({
             x: Array.from(lon), y: Array.from(lat), z,
             customdata: cd,
             colorscale: "Viridis",
+            opacity: OVERLAY_OPACITY,
             hovertemplate: "%{y:.1f}°, %{x:.1f}°<br>%{customdata:,d} obs<extra></extra>",
-            colorbar: {
-              orientation: "h", y: -0.02, yanchor: "top", thickness: 6, len: 0.9,
-              tickfont: { size: 8 }, outlinewidth: 0, ...logTicks(maxLog),
-            },
+            colorbar: colorBar(maxLog),
           }];
           layout.xaxis = { range: [-180, 180], showticklabels: false, ticks: "", zeroline: false, showgrid: false };
           layout.yaxis = { range: [-90, 90], showticklabels: false, ticks: "", zeroline: false, showgrid: false, scaleanchor: "x" };
@@ -173,13 +184,11 @@ export default function CountMapPanel({
             lat: mLat, lon: mLon, mode: "markers",
             customdata: mCd,
             hovertemplate: "%{lat:.1f}°, %{lon:.1f}°<br>%{customdata:,d} obs<extra></extra>",
+            opacity: OVERLAY_OPACITY,
             marker: {
-              symbol: "square", size: 4, color: mVal, colorscale: "Viridis",
+              symbol: "square", size: 7, color: mVal, colorscale: "Viridis",
               line: { width: 0 },
-              colorbar: {
-                orientation: "h", y: -0.02, yanchor: "top", thickness: 6, len: 0.9,
-                tickfont: { size: 8 }, outlinewidth: 0, ...logTicks(maxLog),
-              },
+              colorbar: colorBar(maxLog),
             },
           }];
           layout.geo = {
@@ -188,13 +197,14 @@ export default function CountMapPanel({
               rotation: { lon: 0, lat: north ? 90 : -90 },
               // Zoom the hemisphere down to the 60°-pole cap. lataxis.range does not
               // scale an orthographic geo, so the zoom has to come from projection.scale.
-              scale: 1.9,
+              scale: 2
             },
             domain: { x: [0, 1], y: [0, 1] },
-            showcoastlines: true, coastlinewidth: 0.5, coastlinecolor: "#666",
-            showland: true, landcolor: "#f2f2f2",
-            showocean: false, showframe: false,
-            bgcolor: "#ffffff",
+            // No basemap: the quicklook underneath already supplies the geography.
+            showcoastlines: false, showland: false, showocean: false,
+            showlakes: false, showrivers: false, showcountries: false,
+            showsubunits: false, showframe: false,
+            bgcolor: "rgba(0,0,0,0)",
           };
         }
 
@@ -242,7 +252,7 @@ export default function CountMapPanel({
               : `Error: ${errMsg}`}
         </div>
       )}
-      <div ref={plotDiv} style={{ width: "100%", height: "100%" }} />
+      <div ref={plotDiv} style={{ width: "100%", height: "100%", marginTop: "2.2rem", marginLeft: "-60px" }} />
     </>
   );
 }
