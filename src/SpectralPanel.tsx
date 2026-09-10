@@ -353,6 +353,28 @@ export default function SpectralPanel({
     };
   }, [lat, lon, box, temporal, sat, year, month]);
 
+  // Plotly's `responsive` option only listens for window resizes, so the plot
+  // keeps whatever width it was drawn at when the flex row around it changes.
+  // That is exactly what happens when the middle quicklook goes from
+  // unavailable to available: this panel gives that width back, and without a
+  // redraw the chart would stay at its full-width size and be clipped.
+  useEffect(() => {
+    const div = plotDiv.current;
+    if (!div || typeof ResizeObserver === "undefined") return;
+    let frame = 0;
+    const ro = new ResizeObserver(() => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        // Plotly.Plots.resize throws on a div it has not drawn into yet.
+        if (plotDiv.current && (plotDiv.current as { _fullLayout?: unknown })._fullLayout) {
+          Plotly.Plots.resize(plotDiv.current);
+        }
+      });
+    });
+    ro.observe(div);
+    return () => { cancelAnimationFrame(frame); ro.disconnect(); };
+  }, []);
+
   return (
     <div
       style={{

@@ -30,7 +30,7 @@ const LONGNAME: Record<string, Record<string, string>> = {
 'season': { "DJF": "DJF", "MAM": "MAM", "JJA": "JJA", "SON": "SON" },
 'year': Object.fromEntries(Array.from({ length: new Date().getFullYear() - 2024 + 1 }, (_, i) => String(2024 + i)).map(y => [y, y])),
 'channel': { "Channel 12": "12", "Channel 24": "24", "Channel 30": "30", "Channel 32": "32" },
-'proj': { "North pole": "np", "Global": "gb", "South pole": "sp" },
+'proj': { "North pole": "np", "Global": "gb", "South pole": "sp", "Greenland": "gr" },
 'var': { "Mean": "mean", "Max": "max", "Min": "min", "Std": "std" },
 };
 const OPTIONS: Record<OptionKey, string[]> = {
@@ -39,7 +39,7 @@ const OPTIONS: Record<OptionKey, string[]> = {
   season:  ["DJF","MAM","JJA","SON"],
   year:    Array.from({ length: new Date().getFullYear() - 2024 + 1 }, (_, i) => String(2024 + i)),
   channel: ["Channel 12","Channel 24","Channel 30","Channel 32"],
-  proj:    ["North pole","Global","South pole"],
+  proj:    ["North pole","Global","South pole", "Greenland"],
   var:     ["Mean","Max","Min","Std"],
   variable: ["Brightness temperature","Spectral radiance"],
 };

@@ -290,6 +290,7 @@ def create_orthographic_plot(
     cmap='inferno',
     title=None,
     cbar_label=None,
+    pil_kwargs=None,
     save=True
 ):
     """
@@ -321,6 +322,9 @@ def create_orthographic_plot(
         Full title; None builds the default brightness-temperature one
     cbar_label : str
         Colorbar label; None keeps "Brightness Temperature (K)"
+    pil_kwargs : dict
+        Encoder options handed to Pillow for raster formats, e.g.
+        {'lossless': True} for webp; ignored (unset) for pdf/svg
     save : bool
         Whether to save the plot (default: True)
     """
@@ -430,7 +434,8 @@ def create_orthographic_plot(
     
     # Save plot
     if save:
-        plt.savefig(output_path, dpi=150, bbox_inches='tight')
+        plt.savefig(output_path, dpi=150, bbox_inches='tight',
+                    **({'pil_kwargs': pil_kwargs} if pil_kwargs else {}))
         plt.close()
         print(f"Saved: {output_path}")
 
@@ -447,6 +452,7 @@ def create_global_plot(
     cmap='inferno',
     title=None,
     cbar_label=None,
+    pil_kwargs=None,
     save=True
 ):
     """
@@ -476,6 +482,9 @@ def create_global_plot(
         Full title; None builds the default brightness-temperature one
     cbar_label : str
         Colorbar label; None keeps "Brightness Temperature (K)"
+    pil_kwargs : dict
+        Encoder options handed to Pillow for raster formats, e.g.
+        {'lossless': True} for webp; ignored (unset) for pdf/svg
     save : bool
         Whether to save the plot (default: True)
     """
@@ -577,7 +586,8 @@ def create_global_plot(
     
     # Save plot
     if save == True:
-        plt.savefig(output_path, dpi=150, bbox_inches='tight', pad_inches=0.1)
+        plt.savefig(output_path, dpi=150, bbox_inches='tight', pad_inches=0.1,
+                    **({'pil_kwargs': pil_kwargs} if pil_kwargs else {}))
         plt.close()
         print(f"Saved: {output_path}")
 
