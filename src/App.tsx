@@ -10,7 +10,8 @@ import {
 } from "@/components/ui/select";
 import "./App.css";
 import SpectralPanel from "./SpectralPanel";
-import CountMapPanel from "./CountMapPanel";
+import { loadCountGrid, countAt, type CountGrid } from "./zarrSource";
+// import CountMapPanel from "./CountMapPanel";
 // import { time } from "console";
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -75,7 +76,9 @@ export default function App() {
 
   // Observation-count views: the sidebar filler, and the on-demand map overlay
   const [countImgError, setCountImgError] = useState(false);
-  const [showCounts, setShowCounts] = useState(false);
+  // const [showCounts, setShowCounts] = useState(false);
+  // Per-cell observation counts for the hover readout; common to the BT and SR maps
+  const [countState, setCountState] = useState<{ key: string; grid: CountGrid | null } | null>(null);
 
   // Spectral-panel aggregation controls
   const [temporalMean, setTemporalMean] = useState(false);
@@ -144,11 +147,35 @@ export default function App() {
   useEffect(() => {
     fetch(`use_jsons/${LONGNAME.sat[sel.sat]}_${timeVal}_${sel.year}.json`).then((r) => r.json()).then(setInfo).catch(() => null);
   }, [sel.sat, sel.year, timeVal]);
+
+  // Observation counts come from the spectral zarr stores, whichever variable is
+  // mapped. Only the north pole view maps the cursor to lat/lon, so only it loads them.
+  const hoverable = sel.proj === "North pole";
+  const countKey = [sel.sat, sel.year, mode, sel.month, sel.season, sel.channel].join("|");
+  useEffect(() => {
+    if (!hoverable) return;
+    let alive = true;
+    loadCountGrid({
+      sat: LONGNAME.sat[sel.sat], year: sel.year, month: LONGNAME.month[sel.month], mode,
+      season: LONGNAME.season[sel.season], channel: LONGNAME.channel[sel.channel],
+    }).then((grid) => { if (alive) setCountState({ key: countKey, grid }); })
+      .catch(() => { if (alive) setCountState({ key: countKey, grid: null }); });
+    return () => { alive = false; };
+  }, [hoverable, countKey, sel.sat, sel.year, sel.month, sel.season, sel.channel, mode]);
+
+  // Counts loaded for an earlier selection read as still loading.
+  const countReady = countState?.key === countKey;
+  let hoverCount = "…";
+  if (countReady && countState.grid && hoverCoords) {
+    hoverCount = countAt(countState.grid, hoverCoords.lat, hoverCoords.lon)?.toLocaleString() ?? "—";
+  } else if (countReady) {
+    hoverCount = "—";
+  }
   const time_name = mode === "month" ?
    `${timeVal.padStart(2, "0")}${sel.year.slice(-2)}` : 
    `${LONGNAME.season[sel.season]}${sel.year.slice(-2)}`;
   const BTfilename: string | null = allSelected
-    ? `pics/${mode}_plots/${time_name}/${LONGNAME.sat[sel.sat]}_${timeVal}_${
+    ? `bt_pics/${mode}_plots/${time_name}/${LONGNAME.sat[sel.sat]}_${timeVal}_${
       sel.year}_${LONGNAME.proj[sel.proj]}_ch${LONGNAME.channel[sel.channel]}_${LONGNAME.var[sel.var] || sel.var}.webp`
     : null;
   const SRfilename: string | null = allSelected
@@ -366,9 +393,9 @@ export default function App() {
                     ? (e) => { const c = mapClick(e); if (c) setPanelCoords(c); }
                     : undefined}
                 />
-
-                {/* Observation counts, computed from the zarr stores only when asked for */}
-                {isPro && (
+                
+                {/*DISABLED BY SEPT meeting Observation counts, computed from the zarr stores only when asked for */}
+                {/***isPro && (
                   <button
                     className={`iv-panel-btn iv-map-toggle${showCounts ? " active" : ""}`}
                     onClick={() => setShowCounts((p) => !p)}
@@ -391,7 +418,7 @@ export default function App() {
                       timeLabel={mode === "month" ? `${sel.month.slice(0, 3)} ${sel.year}` : `${sel.season} ${sel.year}`}
                     />
                   </div>
-                )}
+                )***/}
               </div>
             )}
             
@@ -456,7 +483,8 @@ export default function App() {
             className="iv-map-tooltip"
             style={{ left: mousePos.x + 14, top: mousePos.y + 14 }}
           >
-            {`${hoverCoords.lat.toFixed(1)}°N  ${Math.abs(hoverCoords.lon).toFixed(1)}°${hoverCoords.lon >= 0 ? "E" : "W"}`}
+            <div>{`${hoverCoords.lat.toFixed(1)}°N  ${Math.abs(hoverCoords.lon).toFixed(1)}°${hoverCoords.lon >= 0 ? "E" : "W"}`}</div>
+            <div>{`Obs. count: ${hoverCount}`}</div>
           </div>
         )}
       </div>

@@ -1,3 +1,5 @@
+import { openGroup, HTTPStore } from "zarr";
+
 // ── Data source ──────────────────────────────────────────────────────────────
 // Public assets are served from ./public, so data is available at /data.
 // Use an absolute URL to avoid Invalid URL errors in URL constructors.
@@ -17,7 +19,7 @@ export const monthsInSeason = (season: string) => {
     default: throw new Error(`Unknown season: ${season}`);
   }};
 
-interface StoreSelection {
+export interface StoreSelection {
   sat: string;
   year: string;
   month: string;
@@ -38,4 +40,76 @@ export function storeUrls({ sat, year, month, mode, season, temporal = false }: 
       : monthsInSeason(season);
   return months.map(mm =>
     zarrUrl(sat, parseInt(mm) === 12 && mode === "season" ? `${parseInt(year) - 1}`.slice(-2) : yy, mm));
+}
+
+// ── Observation counts ───────────────────────────────────────────────────────
+// Per-cell observation counts come from the spectral stores' spectral_radiance_count,
+// and are shared by every view of the selection: the brightness temperature maps
+// are built from the same observations, so the same count applies to them.
+export interface CountGrid {
+  lat: Float64Array;     // cell lower edges (-90..89)
+  lon: Float64Array;     // cell lower edges (-180..179)
+  counts: Float64Array;  // lat-major, summed over the selection's months
+}
+
+// Counts for one channel, summed over the selection's stores. Missing stores (sat2,
+// or months outside the archived range) are skipped; null only when none load.
+export async function loadCountGrid(
+  { channel, ...sel }: StoreSelection & { channel: string },
+): Promise<CountGrid | null> {
+  const urls = storeUrls({ ...sel, temporal: false });
+  const chNum = parseInt(channel, 10);
+
+  const slabs = await Promise.allSettled(urls.map(async (url) => {
+    const root = await openGroup(new HTTPStore(url), "", "r");
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const ga = async (name: string) => ((await root.getItem(name)) as any).get();
+    const [latRaw, lonRaw] = await Promise.all([ga("lat"), ga("lon")]);
+
+    // The channel number indexes the 63-long spectral axis directly, the same
+    // convention as SpectralPanel's HIGHLIGHT set. The `spectral` coordinate is
+    // int64, which zarr.js cannot decode, so it is deliberately never read.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const arr = (await root.getItem("spectral_radiance_count")) as any;
+    const nd = arr.shape.length as number;
+    let names: string[] = (await arr.attrs.asObject())["_ARRAY_DIMENSIONS"] ?? [];
+    if (names.length !== nd) {
+      names = new Array(nd).fill("");
+      names[nd - 1] = "spectral"; names[nd - 2] = "lon"; names[nd - 3] = "lat";
+    }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const selection: any[] = names.map((nm) => (nm === "spectral" ? chNum : null));
+    const raw = await arr.getRaw(selection);
+
+    return {
+      lat: latRaw.data as Float64Array,
+      lon: lonRaw.data as Float64Array,
+      data: raw.data as ArrayLike<number>,
+    };
+  }));
+
+  let grid: CountGrid | null = null;
+  for (const s of slabs) {
+    if (s.status !== "fulfilled") continue;
+    const { lat, lon, data } = s.value;
+    if (!grid) grid = { lat, lon, counts: new Float64Array(lat.length * lon.length) };
+    if (data.length !== grid.counts.length) continue;
+    for (let p = 0; p < data.length; p++) {
+      const v = data[p];
+      if (Number.isFinite(v)) grid.counts[p] += v;
+    }
+  }
+  return grid;
+}
+
+// Count of the grid cell holding (lat, lon), or null outside the grid.
+export function countAt({ lat, lon, counts }: CountGrid, la: number, lo: number): number | null {
+  const nLat = lat.length, nLon = lon.length;
+  const latStep = nLat > 1 ? lat[1] - lat[0] : 1;
+  const lonStep = nLon > 1 ? lon[1] - lon[0] : 1;
+  const li = Math.floor((la - lat[0]) / latStep);
+  let lj = Math.floor((lo - lon[0]) / lonStep);
+  lj = ((lj % nLon) + nLon) % nLon;
+  if (li < 0 || li >= nLat) return null;
+  return counts[li * nLon + lj];
 }

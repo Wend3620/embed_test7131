@@ -1,15 +1,12 @@
 import { useEffect, useRef, useState } from "react";
-import { openGroup, HTTPStore } from "zarr";
 
 import Plotly from "plotly.js";
 
-import { storeUrls } from "./zarrSource";
+import { loadCountGrid } from "./zarrSource";
 
 // The overlay sits on top of the quicklook; the counts are drawn semi-transparent
 // so both read at once.
 const OVERLAY_OPACITY = 0.75;
-const NLAT = 180;
-const NLON = 360;
 
 // Sphere cartopy projects the quicklooks onto, in metres, and its degree factor.
 const R = 6378137;
@@ -171,59 +168,14 @@ export default function CountMapPanel({
       try {
         setStatus("loading");
 
-        const urls = storeUrls({ sat, year, month, mode, season });
-        const chNum = parseInt(channel, 10);
-
-        let latData: Float64Array | null = null;
-        let lonData: Float64Array | null = null;
-        const counts = new Float64Array(NLAT * NLON);
-        let nStores = 0;
-
         // Missing stores (sat2, or months outside the archived range) are skipped;
         // only a complete miss is reported as "unavailable".
-        const slabs = await Promise.allSettled(urls.map(async (url) => {
-          const root = await openGroup(new HTTPStore(url), "", "r");
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const ga = async (name: string) => ((await root.getItem(name)) as any).get();
-          const [latRaw, lonRaw] = await Promise.all([ga("lat"), ga("lon")]);
-
-          // The channel number indexes the 63-long spectral axis directly, the same
-          // convention as SpectralPanel's HIGHLIGHT set. The `spectral` coordinate is
-          // int64, which zarr.js cannot decode, so it is deliberately never read.
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const arr = (await root.getItem("spectral_radiance_count")) as any;
-          const nd = arr.shape.length as number;
-          let names: string[] = (await arr.attrs.asObject())["_ARRAY_DIMENSIONS"] ?? [];
-          if (names.length !== nd) {
-            names = new Array(nd).fill("");
-            names[nd - 1] = "spectral"; names[nd - 2] = "lon"; names[nd - 3] = "lat";
-          }
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const selection: any[] = names.map((nm) => (nm === "spectral" ? chNum : null));
-          const raw = await arr.getRaw(selection);
-
-          return {
-            lat: latRaw.data as Float64Array,
-            lon: lonRaw.data as Float64Array,
-            data: raw.data as ArrayLike<number>,
-          };
-        }));
-
-        for (const s of slabs) {
-          if (s.status !== "fulfilled") continue;
-          const { lat, lon, data } = s.value;
-          if (data.length !== counts.length) continue;
-          latData = lat; lonData = lon;
-          for (let p = 0; p < data.length; p++) {
-            const v = data[p];
-            if (Number.isFinite(v)) counts[p] += v;
-          }
-          nStores++;
-        }
+        const grid = await loadCountGrid({ sat, year, month, mode, season, channel });
 
         if (!alive) return;
-        if (!nStores || !latData || !lonData) { setStatus("unavailable"); return; }
+        if (!grid) { setStatus("unavailable"); return; }
         if (!plotDiv.current) return;
+        const { lat: latData, lon: lonData, counts } = grid;
 
         // The stored coordinates are cell lower edges (-90..89, -180..179).
         const nLat = latData.length, nLon = lonData.length;
