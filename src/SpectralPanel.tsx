@@ -3,7 +3,7 @@ import { openGroup, HTTPStore, slice } from "zarr";
 
 import Plotly from "plotly.js";
 
-import { storeUrls } from "./zarrSource";
+import { storeUrls, loadMask, REGIONS } from "./zarrSource";
 
 //Physical constants
 const H  = 6.626e-34;   // J·s
@@ -55,9 +55,10 @@ function rangeIndices(coord: ArrayLike<number>, lo: number, hi: number): [number
 interface Box { latMin: number; latMax: number; lonMin: number; lonMax: number; }
 
 interface Props {
-  lat?: number;
+  lat?: number;         // picked point; overrides the box and the region when set
   lon?: number;
-  box?: Box | null;     // spatial-averaging box; overrides the point when set
+  box?: Box | null;     // spatial-averaging box; overrides the region when set
+  region?: string;      // map view code ("np", "sp", "gb", "gre"); the default average
   temporal?: boolean;   // annual (12-month) mean when true
   sat?: string;         // "sat1"
   year?: string;        // "2025"
@@ -67,7 +68,7 @@ interface Props {
 }
 
 export default function SpectralPanel({
-  lat = 65, lon = -130, box = null, temporal = false,
+  lat, lon, box = null, region = "np", temporal = false,
   sat = "sat1", year = "2025", month = "12", mode = "month", season = "DJF"
 }: Props) {
   const plotDiv = useRef<HTMLDivElement>(null);
@@ -80,10 +81,14 @@ export default function SpectralPanel({
 
     (async () => {
       try {
+        const point = lat !== undefined && lon !== undefined ? { lat, lon } : null;
+        const reg = REGIONS[region];
         setStatus("loading");
+        if (!reg) throw new Error(`Unknown region "${region}"`);
         setLoadMsg(
           temporal ? "Loading annual mean (12 months)…"
-                   : box ? "Loading spatial mean…" : "Loading zarr data…");
+                   : point ? "Loading zarr data…"
+                   : box ? "Loading spatial mean…" : "Loading regional mean…");
 
         // Stores to aggregate: 12 months for the annual mean, the season's three
         // months (may cross a year boundary), else the selected month.
@@ -101,21 +106,52 @@ export default function SpectralPanel({
         const wlFull  = Array.from(wlRaw.data as Float32Array);
         const nSpec   = wlFull.length;
 
-        // Resolve the spatial selection: a box index range, or the nearest point.
-        let latSel: [number, number] = [0, 0], lonSel: [number, number] = [0, 0];
+        // Resolve the spatial selection: the nearest cell to a picked point, else an
+        // index range (box, or the view's region), optionally narrowed by a cell mask.
+        const nLat = latData.length, nLon = lonData.length;
+        const halfLat = nLat > 1 ? (latData[1] - latData[0]) / 2 : 0;
+        let latSel: [number, number] = [0, nLat], lonSel: [number, number] = [0, nLon];
         let latIdx = 0, lonIdx = 0;
-        if (box) {
+        let mask: Uint8Array | null = null;
+        if (point) {
+          latIdx = argmin(Array.from(latData).map(v => Math.abs(v - point.lat)));
+          lonIdx = argmin(Array.from(lonData).map(v => Math.abs(v - point.lon)));
+        } else if (box) {
           const [ls, le] = rangeIndices(latData, box.latMin, box.latMax);
           const [os, oe] = rangeIndices(lonData, box.lonMin, box.lonMax);
           if (ls < 0 || os < 0) throw new Error("No grid cells fall inside the entered box.");
           latSel = [ls, le + 1];
           lonSel = [os, oe + 1];
+        } else if (reg.mask) {
+          // Read only the bounding box of the mask's cells
+          mask = await loadMask(reg.mask, nLat, nLon);
+          let [l0, l1, o0, o1] = [nLat, -1, nLon, -1];
+          for (let i = 0; i < nLat; i++) for (let j = 0; j < nLon; j++) {
+            if (mask[i * nLon + j]) {
+              l0 = Math.min(l0, i); l1 = Math.max(l1, i);
+              o0 = Math.min(o0, j); o1 = Math.max(o1, j);
+            }
+          }
+          if (l1 < 0) throw new Error(`The ${reg.label} mask is empty.`);
+          latSel = [l0, l1 + 1];
+          lonSel = [o0, o1 + 1];
         } else {
-          latIdx = argmin(Array.from(latData).map(v => Math.abs(v - lat)));
-          lonIdx = argmin(Array.from(lonData).map(v => Math.abs(v - lon)));
+          // Match the region on cell centres (lat holds lower edges)
+          const [ls, le] = rangeIndices(latData, (reg.latMin ?? -90) - halfLat, (reg.latMax ?? 90) - halfLat);
+          if (ls < 0) throw new Error(`No grid cells fall inside ${reg.label}.`);
+          latSel = [ls, le + 1];
         }
 
-        // NaN-aware accumulation over space (box) and time (months) per spectral channel.
+        // Area weight of each selected cell: cos(lat) at the cell centre, zero
+        // outside the mask. A single point needs no weighting.
+        const weight = (i: number, j: number) => {
+          if (point) return 1;
+          const li = latSel[0] + i, lj = lonSel[0] + j;
+          if (mask && !mask[li * nLon + lj]) return 0;
+          return Math.cos((latData[li] + halfLat) * Math.PI / 180);
+        };
+
+        // NaN-aware, area-weighted accumulation over space and time (months) per spectral channel.
         const radSum = new Float64Array(nSpec), radCnt = new Float64Array(nSpec);
         const stdSum = new Float64Array(nSpec), stdCnt = new Float64Array(nSpec);
 
@@ -134,27 +170,36 @@ export default function SpectralPanel({
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const selection: any[] = [];
           const kept: number[] = [];
-          let specAxis = -1;
+          let specAxis = -1, latAxis = -1, lonAxis = -1;
           for (let i = 0; i < nd; i++) {
             const nm = names[i];
-            if (nm === "lat" && !box)      { selection.push(latIdx); }
-            else if (nm === "lon" && !box) { selection.push(lonIdx); }
-            else if (nm === "lat")         { selection.push(slice(latSel[0], latSel[1])); kept.push(i); }
-            else if (nm === "lon")         { selection.push(slice(lonSel[0], lonSel[1])); kept.push(i); }
-            else                           { selection.push(null); kept.push(i); if (nm === "spectral") specAxis = i; }
+            if (nm === "lat" && point)      { selection.push(latIdx); }
+            else if (nm === "lon" && point) { selection.push(lonIdx); }
+            else if (nm === "lat")          { selection.push(slice(latSel[0], latSel[1])); kept.push(i); latAxis = i; }
+            else if (nm === "lon")          { selection.push(slice(lonSel[0], lonSel[1])); kept.push(i); lonAxis = i; }
+            else                            { selection.push(null); kept.push(i); if (nm === "spectral") specAxis = i; }
           }
           if (specAxis < 0) specAxis = nd - 1; // spectral is the trailing axis by convention
 
           const raw   = await arr.getRaw(selection);
           const data  = raw.data as ArrayLike<number>;
           const shape = raw.shape as number[];
-          const specPos = kept.indexOf(specAxis);
-          let stride = 1;                       // C-order stride of the spectral axis in the result
-          for (let i = specPos + 1; i < shape.length; i++) stride *= shape[i];
-          const sp = shape[specPos];
+          // Index along an original axis of the element at flat position p of the
+          // C-order result (always 0 for an axis that was indexed away).
+          const axisIndex = (axis: number) => {
+            const pos = kept.indexOf(axis);
+            if (pos < 0) return () => 0;
+            let stride = 1;
+            for (let i = pos + 1; i < shape.length; i++) stride *= shape[i];
+            const n = shape[pos];
+            return (p: number) => Math.floor(p / stride) % n;
+          };
+          const specAt = axisIndex(specAxis), latAt = axisIndex(latAxis), lonAt = axisIndex(lonAxis);
           for (let p = 0; p < data.length; p++) {
             const v = data[p];
-            if (Number.isFinite(v)) { const c = Math.floor(p / stride) % sp; sum[c] += v; cnt[c] += 1; }
+            if (!Number.isFinite(v)) continue;
+            const w = weight(latAt(p), lonAt(p));
+            if (w > 0) { const c = specAt(p); sum[c] += w * v; cnt[c] += w; }
           }
         };
 
@@ -300,9 +345,11 @@ export default function SpectralPanel({
 
         const fmtLat = (v: number) => v >= 0 ? `${Math.abs(v).toFixed(1)}°N` : `${Math.abs(v).toFixed(1)}°S`;
         const fmtLon = (v: number) => v >= 0 ? `${Math.abs(v).toFixed(1)}°E` : `${Math.abs(v).toFixed(1)}°W`;
-        const locStr = box
-          ? `box ${fmtLat(box.latMin)}–${fmtLat(box.latMax)}, ${fmtLon(box.lonMin)}–${fmtLon(box.lonMax)}`
-          : `${fmtLat(latData[latIdx])}, ${fmtLon(lonData[lonIdx])}`;
+        const locStr = point
+          ? `${fmtLat(latData[latIdx])}, ${fmtLon(lonData[lonIdx])}`
+          : box
+            ? `box ${fmtLat(box.latMin)}–${fmtLat(box.latMax)}, ${fmtLon(box.lonMin)}–${fmtLon(box.lonMax)}`
+            : reg.label;
         const titlePrefix = temporal ? "Annual-mean " : mode === "month" ? "" : `${season}-mean `;
 
         const layout: Partial<Plotly.Layout> = {
@@ -351,7 +398,7 @@ export default function SpectralPanel({
       alive = false;
       if (plotDiv.current) Plotly.purge(plotDiv.current);
     };
-  }, [lat, lon, box, temporal, sat, year, month]);
+  }, [lat, lon, box, region, temporal, sat, year, month, mode, season]);
 
   // Plotly's `responsive` option only listens for window resizes, so the plot
   // keeps whatever width it was drawn at when the flex row around it changes.

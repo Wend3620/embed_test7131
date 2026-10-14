@@ -6,6 +6,7 @@ import { openGroup, HTTPStore } from "zarr";
 // BASE_URL is "/embed_test7131/" in the deployed build and "/" in dev (it always
 // has a trailing slash), so this resolves to the correct subpath on GitHub Pages.
 export const DATA_DIR = `${window.location.origin}${import.meta.env.BASE_URL}data`;
+export const MASK_DIR = `${window.location.origin}${import.meta.env.BASE_URL}masks`;
 
 // Files are named sat#_mmyy.zarr (e.g. sat1_1225.zarr → sat1, month 12, year 2025).
 export const zarrUrl = (sat: string, yy: string, mm: string) => `${DATA_DIR}/${sat}_${mm}${yy}.zarr`;
@@ -112,4 +113,68 @@ export function countAt({ lat, lon, counts }: CountGrid, la: number, lo: number)
   lj = ((lj % nLon) + nLon) % nLon;
   if (li < 0 || li >= nLat) return null;
   return counts[li * nLon + lj];
+}
+
+// ── Regions ──────────────────────────────────────────────────────────────────
+// Area the spectral panel averages over for each map view, keyed by the view's
+// LONGNAME.proj code. Pole caps match the maps' 60° boundary circle.
+export interface Region {
+  label: string;
+  latMin?: number;
+  latMax?: number;
+  mask?: string;   // .npy file in public/masks
+}
+
+export const REGIONS: Record<string, Region> = {
+  np: { label: "North pole (60–90°N)", latMin: 60 },
+  sp: { label: "South pole (60–90°S)", latMax: -60 },
+  gb: { label: "Global" },
+  gre: { label: "Greenland", mask: "GRE_mask.npy" },
+};
+
+// A boolean .npy mask on the data grid (lat-major, 1 = inside). Masks made on the
+// PREFIRE L3 grid have fewer lat rows; they are padded equally north and south,
+// the same recipe as region_mask() in random/zarr_views.py.
+const maskCache = new Map<string, Promise<Uint8Array>>();
+
+export function loadMask(name: string, nLat: number, nLon: number): Promise<Uint8Array> {
+  const key = `${name}|${nLat}|${nLon}`;
+  let p = maskCache.get(key);
+  if (!p) {
+    p = fetchMask(name, nLat, nLon);
+    p.catch(() => maskCache.delete(key)); // let a failed fetch be retried
+    maskCache.set(key, p);
+  }
+  return p;
+}
+
+async function fetchMask(name: string, nLat: number, nLon: number): Promise<Uint8Array> {
+  const res = await fetch(`${MASK_DIR}/${name}`);
+  if (!res.ok) throw new Error(`Mask ${name}: HTTP ${res.status}`);
+  const buf = await res.arrayBuffer();
+  const view = new DataView(buf);
+
+  // .npy layout: "\x93NUMPY", major, minor, header length (u16 in v1, u32 after), header dict.
+  const magic = new Uint8Array(buf, 0, 6);
+  if (magic[0] !== 0x93 || String.fromCharCode(...magic.slice(1)) !== "NUMPY") {
+    throw new Error(`Mask ${name}: not a .npy file`);
+  }
+  const major = view.getUint8(6);
+  const hlen = major === 1 ? view.getUint16(8, true) : view.getUint32(8, true);
+  const start = major === 1 ? 10 : 12;
+  const header = new TextDecoder().decode(new Uint8Array(buf, start, hlen));
+  const descr = /'descr':\s*'([^']+)'/.exec(header)?.[1];
+  const fortran = /'fortran_order':\s*(True|False)/.exec(header)?.[1];
+  const shape = /'shape':\s*\((\d+),\s*(\d+)\)/.exec(header);
+  if ((descr !== "|b1" && descr !== "|u1") || fortran !== "False" || !shape) {
+    throw new Error(`Mask ${name}: expected a 2-D C-order bool array, got ${header.trim()}`);
+  }
+  const [mLat, mLon] = [parseInt(shape[1]), parseInt(shape[2])];
+  const pad = nLat - mLat;
+  if (pad < 0 || pad % 2) throw new Error(`Mask ${name}: ${mLat} lat rows cannot pad evenly to ${nLat}`);
+  if (mLon !== nLon) throw new Error(`Mask ${name}: has ${mLon} lons, grid has ${nLon}`);
+
+  const out = new Uint8Array(nLat * nLon);
+  out.set(new Uint8Array(buf, start + hlen, mLat * mLon), (pad / 2) * nLon);
+  return out;
 }

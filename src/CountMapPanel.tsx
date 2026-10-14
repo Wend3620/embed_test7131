@@ -128,7 +128,7 @@ interface Props {
   mode: string;      // "month" | "season"
   season: string;    // "DJF" | "MAM" | "JJA" | "SON"
   channel: string;   // "12" | "24" | "30" | "32"
-  proj: string;      // "np" | "gb" | "sp" | "gr"
+  proj: string;      // "np" | "gb" | "sp" | "gre"
   timeLabel: string; // "December 2025"
 }
 

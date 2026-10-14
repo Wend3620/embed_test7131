@@ -31,7 +31,7 @@ const LONGNAME: Record<string, Record<string, string>> = {
 'season': { "DJF": "DJF", "MAM": "MAM", "JJA": "JJA", "SON": "SON" },
 'year': Object.fromEntries(Array.from({ length: new Date().getFullYear() - 2024 + 1 }, (_, i) => String(2024 + i)).map(y => [y, y])),
 'channel': { "Channel 12": "12", "Channel 24": "24", "Channel 30": "30", "Channel 32": "32" },
-'proj': { "North pole": "np", "Global": "gb", "South pole": "sp", "Greenland": "gr" },
+'proj': { "North pole": "np", "Global": "gb", "South pole": "sp", "Greenland": "gre" },
 'var': { "Mean": "mean", "Max": "max", "Min": "min", "Std": "std" },
 };
 const OPTIONS: Record<OptionKey, string[]> = {
@@ -70,12 +70,14 @@ export default function App() {
   });
   const [erroredFile, setErroredFile] = useState<string | null>(null);
   const [info, setInfo] = useState<Record<string, unknown> | null>(null);
-  const [panelCoords, setPanelCoords] = useState({ lat: 65, lon: -130 });
+  // Point clicked on the map for the spectral panel; it applies only to the view it
+  // was picked on, and the panel shows that view's regional mean otherwise.
+  const [point, setPoint] = useState<{ proj: string; lat: number; lon: number } | null>(null);
   const [hoverCoords, setHoverCoords] = useState<{ lat: number; lon: number } | null>(null);
   const [mousePos, setMousePos] = useState<{ x: number; y: number } | null>(null);
 
   // Observation-count views: the sidebar filler, and the on-demand map overlay
-  const [countImgError, setCountImgError] = useState(false);
+  const [erroredCountFile, setErroredCountFile] = useState<string | null>(null);
   // const [showCounts, setShowCounts] = useState(false);
   // Per-cell observation counts for the hover readout; common to the BT and SR maps
   const [countState, setCountState] = useState<{ key: string; grid: CountGrid | null } | null>(null);
@@ -110,6 +112,7 @@ export default function App() {
         latMin: Math.min(v.latMin, v.latMax), latMax: Math.max(v.latMin, v.latMax),
         lonMin: Math.min(v.lonMin, v.lonMax), lonMax: Math.max(v.lonMin, v.lonMax),
       });
+      setPoint(null);
       setShowSpatialMenu(false);
     }
   };
@@ -163,6 +166,8 @@ export default function App() {
     return () => { alive = false; };
   }, [hoverable, countKey, sel.sat, sel.year, sel.month, sel.season, sel.channel, mode]);
 
+  const activePoint = point?.proj === sel.proj ? point : null;
+
   // Counts loaded for an earlier selection read as still loading.
   const countReady = countState?.key === countKey;
   let hoverCount = "…";
@@ -180,7 +185,12 @@ export default function App() {
     : null;
   const SRfilename: string | null = allSelected
     ? `sr_pics/${mode}_plots/${time_name}/${LONGNAME.sat[sel.sat]}_${timeVal}_${
-      sel.year}_${LONGNAME.proj[sel.proj]}_spec${LONGNAME.channel[sel.channel]}_${LONGNAME.var[sel.var] || sel.var}.webp`
+      sel.year}_${LONGNAME.proj[sel.proj]}_ch${LONGNAME.channel[sel.channel]}_${LONGNAME.var[sel.var] || sel.var}.webp`
+    : null;
+  
+  const CTfilename: string | null = allSelected
+    ? `sr_pics/count_plots/${time_name}/${LONGNAME.sat[sel.sat]}_${timeVal}_${
+      sel.year}_${LONGNAME.proj[sel.proj]}_ch${LONGNAME.channel[sel.channel]}_count.webp`
     : null;
   // Professional unlocks the spectral plot and the variable choice; Lite is brightness temperature only.
   const isPro = tier === "pro";
@@ -259,7 +269,7 @@ export default function App() {
                   <button
                     className={`iv-panel-btn${box ? " active" : ""}`}
                     onClick={() => setShowSpatialMenu((p) => !p)}
-                    title="Average spectral radiance over a lat/lon box"
+                    title="Average spectral radiance over a lat/lon box instead of the view's region"
                   >
                     Spatial Averaging ▾
                   </button>
@@ -360,9 +370,10 @@ export default function App() {
           <div className="iv-panel">
             {isPro && (
               <SpectralPanel
-                lat={panelCoords.lat}
-                lon={panelCoords.lon}
+                lat={activePoint?.lat}
+                lon={activePoint?.lon}
                 box={box}
+                region={LONGNAME.proj[sel.proj]}
                 temporal={temporalMean}
                 sat={LONGNAME.sat[sel.sat]}
                 year={sel.year}
@@ -390,7 +401,7 @@ export default function App() {
                     ? () => { setHoverCoords(null); setMousePos(null); }
                     : undefined}
                   onClick={sel.proj === "North pole"
-                    ? (e) => { const c = mapClick(e); if (c) setPanelCoords(c); }
+                    ? (e) => { const c = mapClick(e); if (c) { setPoint({ proj: sel.proj, ...c }); setBox(null); } }
                     : undefined}
                 />
                 
@@ -437,14 +448,14 @@ export default function App() {
               </div>
               {/* Static reference count map; the live version is the map overlay */}
               <div className="iv-info-map">
-                {countImgError ? (
+                {!CTfilename || CTfilename === erroredCountFile ? (
                   <div className="iv-info-map-msg">Count map unavailable</div>
                 ) : (
                   <img
-                    src="trial_pics/count1.png"
+                    src={CTfilename}
                     alt="Observation count map"
                     className="iv-info-map-img"
-                    onError={() => setCountImgError(true)}
+                    onError={() => setErroredCountFile(CTfilename)}
                   />
                 )}
               </div>

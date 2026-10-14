@@ -14,17 +14,34 @@ export default defineConfig({
     {
       name: 'serve-data-dir',
       configureServer(server) {
+        // Serves ./data (every zarr store) in dev. The app requests data under
+        // `base`, so match that as well as a bare /data/; unmatched requests fall
+        // through to Vite, which would serve zarr metadata as JS modules.
+        const dataDir = path.join(__dirname, 'data');
+        const prefixes = [`${server.config.base}data/`, '/data/'];
         server.middlewares.use((req: any, res: any, next: any) => {
-          if (!req.url?.startsWith('/data/')) { next(); return; }
-          const filePath = path.join(__dirname, req.url.split('?')[0]);
+          const urlPath = req.url?.split('?')[0] ?? '';
+          const prefix = prefixes.find((p) => urlPath.startsWith(p));
+          if (!prefix) { next(); return; }
+          let filePath: string;
+          try {
+            filePath = path.resolve(dataDir, decodeURIComponent(urlPath.slice(prefix.length)));
+          } catch { next(); return; } // malformed escape
+          if (!filePath.startsWith(dataDir + path.sep)) { next(); return; }
           try {
             const stat = fs.statSync(filePath);
             if (stat.isFile()) {
-              const ext = path.extname(filePath);
+              // extname is empty for dotfiles such as .zarray; key those by name
+              const ext = path.extname(filePath) || path.basename(filePath);
               const mime: Record<string, string> = {
                 '.html': 'text/html',
                 '.json': 'application/json',
                 '.js': 'application/javascript',
+                // zarr v2 metadata
+                '.zgroup': 'application/json',
+                '.zarray': 'application/json',
+                '.zattrs': 'application/json',
+                '.zmetadata': 'application/json',
               };
               res.setHeader('Content-Type', mime[ext] ?? 'application/octet-stream');
               fs.createReadStream(filePath).pipe(res);
