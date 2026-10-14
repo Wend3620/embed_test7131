@@ -345,18 +345,25 @@ export default function SpectralPanel({
 
         const fmtLat = (v: number) => v >= 0 ? `${Math.abs(v).toFixed(1)}°N` : `${Math.abs(v).toFixed(1)}°S`;
         const fmtLon = (v: number) => v >= 0 ? `${Math.abs(v).toFixed(1)}°E` : `${Math.abs(v).toFixed(1)}°W`;
+        const isRegion = !point && !box;
         const locStr = point
-          ? `${fmtLat(latData[latIdx])}, ${fmtLon(lonData[lonIdx])}`
+          ? `at ${fmtLat(latData[latIdx])}, ${fmtLon(lonData[lonIdx])}`
           : box
-            ? `box ${fmtLat(box.latMin)}–${fmtLat(box.latMax)}, ${fmtLon(box.lonMin)}–${fmtLon(box.lonMax)}`
-            : reg.label;
-        const titlePrefix = temporal ? "Annual-mean " : mode === "month" ? "" : `${season}-mean `;
+            ? `in box ${fmtLat(box.latMin)}–${fmtLat(box.latMax)}, ${fmtLon(box.lonMin)}–${fmtLon(box.lonMax)}`
+            : `(${reg.label})`;
+        // A regional average leads with "Mean", which absorbs the time-mean wording
+        let period = "";
+        if (temporal) period = "annual";
+        else if (mode !== "month") period = season;
+        let titlePrefix = "";
+        if (isRegion) titlePrefix = period ? `Mean ${period} ` : "Mean ";
+        else if (period) titlePrefix = `${period[0].toUpperCase()}${period.slice(1)}-mean `;
 
         const layout: Partial<Plotly.Layout> = {
           bargap: 0,
           margin: { l: 65, r: 70, t: 40, b: 65 },
           title: {
-            text: `${titlePrefix}Spectral Radiance & Planck curve fit at ${locStr}`,
+            text: `${titlePrefix}Spectral Radiance & Planck curve fit ${locStr}`,
             x: 0.06,
             font: { size: 18, weight: "bold" },
           },

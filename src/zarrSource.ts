@@ -126,8 +126,8 @@ export interface Region {
 }
 
 export const REGIONS: Record<string, Region> = {
-  np: { label: "North pole (60–90°N)", latMin: 60 },
-  sp: { label: "South pole (60–90°S)", latMax: -60 },
+  np: { label: "North pole, 60–90°N", latMin: 60 },
+  sp: { label: "South pole, 60–90°S", latMax: -60 },
   gb: { label: "Global" },
   gre: { label: "Greenland", mask: "GRE_mask.npy" },
 };
