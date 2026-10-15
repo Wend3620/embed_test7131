@@ -345,19 +345,20 @@ export default function SpectralPanel({
 
         const fmtLat = (v: number) => v >= 0 ? `${Math.abs(v).toFixed(1)}°N` : `${Math.abs(v).toFixed(1)}°S`;
         const fmtLon = (v: number) => v >= 0 ? `${Math.abs(v).toFixed(1)}°E` : `${Math.abs(v).toFixed(1)}°W`;
-        const isRegion = !point && !box;
+        const isAverage = !point; // regional or box average
         const locStr = point
           ? `at ${fmtLat(latData[latIdx])}, ${fmtLon(lonData[lonIdx])}`
           : box
             ? `in box ${fmtLat(box.latMin)}–${fmtLat(box.latMax)}, ${fmtLon(box.lonMin)}–${fmtLon(box.lonMax)}`
             : `(${reg.label})`;
-        // A regional average leads with "Mean", which absorbs the time-mean wording
+        // "Annual mean" / "DJF mean" for time means; a single month of a spatial
+        // average is just "Mean"
         let period = "";
-        if (temporal) period = "annual";
+        if (temporal) period = "Annual";
         else if (mode !== "month") period = season;
         let titlePrefix = "";
-        if (isRegion) titlePrefix = period ? `Mean ${period} ` : "Mean ";
-        else if (period) titlePrefix = `${period[0].toUpperCase()}${period.slice(1)}-mean `;
+        if (period) titlePrefix = `${period} mean `;
+        else if (isAverage) titlePrefix = "Mean ";
 
         const layout: Partial<Plotly.Layout> = {
           bargap: 0,

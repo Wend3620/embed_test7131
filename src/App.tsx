@@ -11,6 +11,7 @@ import {
 import "./App.css";
 import SpectralPanel from "./SpectralPanel";
 import { loadCountGrid, countAt, type CountGrid } from "./zarrSource";
+import { loadMapFrames, pixelToLatLon, clientToNatural, type MapFrames } from "./mapGeo";
 // import CountMapPanel from "./CountMapPanel";
 // import { time } from "console";
 
@@ -56,9 +57,6 @@ const LABELS: Record<OptionKey, string> = {
   variable: "Variable",
 };
 
-const MAP_RADIUS_PX   = 600; // radius of 60°N boundary circle in 1500×1500 image px
-const MAP_CENTER_X_PX = 640; // x-coordinate of circle center in 1500×1500 image px (< 750 if colorbar is on the right)
-const MAP_CENTER_Y_PX = 785; // y-coordinate of circle center in 1500×1500 image px
 
 // ── Component ──────────────────────────────────────────────────────────────
 export default function App() {
@@ -70,9 +68,9 @@ export default function App() {
   });
   const [erroredFile, setErroredFile] = useState<string | null>(null);
   const [info, setInfo] = useState<Record<string, unknown> | null>(null);
-  // Point clicked on the map for the spectral panel; it applies only to the view it
-  // was picked on, and the panel shows that view's regional mean otherwise.
-  const [point, setPoint] = useState<{ proj: string; lat: number; lon: number } | null>(null);
+  // Point clicked on the map for the spectral panel. Changing the view clears it,
+  // so the panel goes back to that view's regional mean.
+  const [point, setPoint] = useState<{ lat: number; lon: number } | null>(null);
   const [hoverCoords, setHoverCoords] = useState<{ lat: number; lon: number } | null>(null);
   const [mousePos, setMousePos] = useState<{ x: number; y: number } | null>(null);
 
@@ -125,22 +123,20 @@ export default function App() {
 
 
 
+  // Lat/lon under the cursor on the displayed map, or null off the map
   function mapClick(e: React.MouseEvent<HTMLImageElement>) {
-    const rect = e.currentTarget.getBoundingClientRect();
-    const scale = Math.max(rect.width, rect.height) / 1470;
-    const imgX = 750 + (e.clientX - rect.left - rect.width  / 2) / scale;
-    const imgY = 750 + (e.clientY - rect.top  - rect.height / 2) / scale;
-    const dx = imgX - MAP_CENTER_X_PX;
-    const dy = imgY - MAP_CENTER_Y_PX;
-    const r  = Math.sqrt(dx * dx + dy * dy);
-    if (r > MAP_RADIUS_PX || r === 0) return null;
-    const lat = Math.acos(r / (2 * MAP_RADIUS_PX)) * 180 / Math.PI;
-    const lon = Math.atan2(dx, dy) * 180 / Math.PI;
-    return { lat: Math.round(lat * 10) / 10, lon: Math.round(lon * 10) / 10 };
+    const img = e.currentTarget;
+    if (!mapFrames || !filename || !img.naturalWidth) return null;
+    const { px, py } = clientToNatural(img, e.clientX, e.clientY);
+    const c = pixelToLatLon(mapFrames, filename, LONGNAME.proj[sel.proj],
+      img.naturalWidth, img.naturalHeight, px, py);
+    return c && { lat: Math.round(c.lat * 10) / 10, lon: Math.round(c.lon * 10) / 10 };
   }
 
-  const handleChange = (key: OptionKey) => (val: string): void =>
+  const handleChange = (key: OptionKey) => (val: string): void => {
     setSel((prev) => ({ ...prev, [key]: val }));
+    if (key === "proj") setPoint(null);
+  };
 
   const dropdownKeys: OptionKey[] = ["sat", mode, "year", "channel", "proj", "var"];
 
@@ -151,12 +147,9 @@ export default function App() {
     fetch(`use_jsons/${LONGNAME.sat[sel.sat]}_${timeVal}_${sel.year}.json`).then((r) => r.json()).then(setInfo).catch(() => null);
   }, [sel.sat, sel.year, timeVal]);
 
-  // Observation counts come from the spectral zarr stores, whichever variable is
-  // mapped. Only the north pole view maps the cursor to lat/lon, so only it loads them.
-  const hoverable = sel.proj === "North pole";
+  // Observation counts come from the spectral zarr stores, whichever variable is mapped.
   const countKey = [sel.sat, sel.year, mode, sel.month, sel.season, sel.channel].join("|");
   useEffect(() => {
-    if (!hoverable) return;
     let alive = true;
     loadCountGrid({
       sat: LONGNAME.sat[sel.sat], year: sel.year, month: LONGNAME.month[sel.month], mode,
@@ -164,9 +157,12 @@ export default function App() {
     }).then((grid) => { if (alive) setCountState({ key: countKey, grid }); })
       .catch(() => { if (alive) setCountState({ key: countKey, grid: null }); });
     return () => { alive = false; };
-  }, [hoverable, countKey, sel.sat, sel.year, sel.month, sel.season, sel.channel, mode]);
+  }, [countKey, sel.sat, sel.year, sel.month, sel.season, sel.channel, mode]);
 
-  const activePoint = point?.proj === sel.proj ? point : null;
+  // Frame boxes and projections of the map images, for cursor → lat/lon
+  const [mapFrames, setMapFrames] = useState<MapFrames | null>(null);
+  useEffect(() => { loadMapFrames().then(setMapFrames).catch(() => null); }, []);
+
 
   // Counts loaded for an earlier selection read as still loading.
   const countReady = countState?.key === countKey;
@@ -370,8 +366,8 @@ export default function App() {
           <div className="iv-panel">
             {isPro && (
               <SpectralPanel
-                lat={activePoint?.lat}
-                lon={activePoint?.lon}
+                lat={point?.lat}
+                lon={point?.lon}
                 box={box}
                 region={LONGNAME.proj[sel.proj]}
                 temporal={temporalMean}
@@ -392,17 +388,11 @@ export default function App() {
                   onError={() => setErroredFile(filename)}
                   style={{
                     ...(sel.proj === "Global" ? { maxHeight: "65vh" } : {}),
-                    ...(sel.proj === "North pole" ? { cursor: "crosshair" } : {}),
+                    cursor: "crosshair",
                   }}
-                  onMouseMove={sel.proj === "North pole"
-                    ? (e) => { setHoverCoords(mapClick(e)); setMousePos({ x: e.clientX, y: e.clientY }); }
-                    : undefined}
-                  onMouseLeave={sel.proj === "North pole"
-                    ? () => { setHoverCoords(null); setMousePos(null); }
-                    : undefined}
-                  onClick={sel.proj === "North pole"
-                    ? (e) => { const c = mapClick(e); if (c) { setPoint({ proj: sel.proj, ...c }); setBox(null); } }
-                    : undefined}
+                  onMouseMove={(e) => { setHoverCoords(mapClick(e)); setMousePos({ x: e.clientX, y: e.clientY }); }}
+                  onMouseLeave={() => { setHoverCoords(null); setMousePos(null); }}
+                  onClick={(e) => { const c = mapClick(e); if (c) { setPoint(c); setBox(null); } }}
                 />
                 
                 {/*DISABLED BY SEPT meeting Observation counts, computed from the zarr stores only when asked for */}
@@ -446,8 +436,9 @@ export default function App() {
                   </div>
                 ))}
               </div>
-              {/* Static reference count map; the live version is the map overlay */}
+              {/* Observation count map, pinned to the bottom of the panel */}
               <div className="iv-info-map">
+                <div className="iv-info-map-title">Observation counts distribution:</div>
                 {!CTfilename || CTfilename === erroredCountFile ? (
                   <div className="iv-info-map-msg">Count map unavailable</div>
                 ) : (
@@ -494,7 +485,7 @@ export default function App() {
             className="iv-map-tooltip"
             style={{ left: mousePos.x + 14, top: mousePos.y + 14 }}
           >
-            <div>{`${hoverCoords.lat.toFixed(1)}°N  ${Math.abs(hoverCoords.lon).toFixed(1)}°${hoverCoords.lon >= 0 ? "E" : "W"}`}</div>
+            <div>{`${Math.abs(hoverCoords.lat).toFixed(1)}°${hoverCoords.lat >= 0 ? "N" : "S"}  ${Math.abs(hoverCoords.lon).toFixed(1)}°${hoverCoords.lon >= 0 ? "E" : "W"}`}</div>
             <div>{`Obs. count: ${hoverCount}`}</div>
           </div>
         )}
