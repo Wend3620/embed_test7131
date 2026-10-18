@@ -1,5 +1,0 @@
-{
-    "description": "Gridded mean, std, count, min, max of spectral radiance binned to a 1.0\u00b0 global grid for 2025-04. time_grid entries list ctimes of all observations contributing to each cell.",
-    "satellite": "sat1",
-    "year_month": "2025-04"
-}

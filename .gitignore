@@ -1,6 +1,7 @@
 dist/*
 dist
 # ./dist/**
+/data*/
 /data/*
 !/data/GRE_mask.npy
 # ./node_modules/

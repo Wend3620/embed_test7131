@@ -1,0 +1,3 @@
+Rename base in vite.config.ts into "/"
+Change built index.html in dist into assets/ instead of /assets/...
+10/17 Version 2 ready

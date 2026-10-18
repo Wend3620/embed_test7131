@@ -3,7 +3,7 @@ import { openGroup, HTTPStore, slice } from "zarr";
 
 import Plotly from "plotly.js";
 
-import { storeUrls, loadMask, REGIONS } from "./zarrSource";
+import { storeUrls, loadMask, REGIONS, SR_VARS } from "./zarrSource";
 
 //Physical constants
 const H  = 6.626e-34;   // J·s
@@ -103,7 +103,7 @@ export default function SpectralPanel({
         ]);
         const latData = latRaw.data as Float64Array;
         const lonData = lonRaw.data as Float64Array;
-        const wlFull  = Array.from(wlRaw.data as Float32Array);
+        const wlFull  = Array.from(wlRaw.data as Float64Array);
         const nSpec   = wlFull.length;
 
         // Resolve the spatial selection: the nearest cell to a picked point, else an
@@ -155,6 +155,7 @@ export default function SpectralPanel({
         const radSum = new Float64Array(nSpec), radCnt = new Float64Array(nSpec);
         const stdSum = new Float64Array(nSpec), stdCnt = new Float64Array(nSpec);
 
+        // Used for accumulating area-weighted statistics over the selected region and time.
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const accumulate = async (root: any, name: string, sum: Float64Array, cnt: Float64Array) => {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -206,8 +207,8 @@ export default function SpectralPanel({
         for (let s = 0; s < urls.length; s++) {
           const root = s === 0 ? root0 : await openGroup(new HTTPStore(urls[s]), "", "r");
           await Promise.all([
-            accumulate(root, "spectral_radiance",     radSum, radCnt),
-            accumulate(root, "spectral_radiance_std", stdSum, stdCnt),
+            accumulate(root, SR_VARS.mean, radSum, radCnt),
+            accumulate(root, SR_VARS.std,  stdSum, stdCnt),
           ]);
         }
 
@@ -351,11 +352,12 @@ export default function SpectralPanel({
           : box
             ? `in box ${fmtLat(box.latMin)}–${fmtLat(box.latMax)}, ${fmtLon(box.lonMin)}–${fmtLon(box.lonMax)}`
             : `(${reg.label})`;
-        // "Annual mean" / "DJF mean" for time means; a single month of a spatial
-        // average is just "Mean"
+        // Time means are labelled "Annual mean" or "<season>-<yy> mean", with the
+        // season's year as in the season_plots folders (DJF 2025 → "DJF-25", the
+        // DJF25 maps). A single month of a spatial average is just "Mean".
         let period = "";
         if (temporal) period = "Annual";
-        else if (mode !== "month") period = season;
+        else if (mode === "season") period = `${season} ${year}`;
         let titlePrefix = "";
         if (period) titlePrefix = `${period} mean `;
         else if (isAverage) titlePrefix = "Mean ";

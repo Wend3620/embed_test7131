@@ -6,8 +6,8 @@ import { defineConfig } from "vite"
 
 // https://vite.dev/config/
 export default defineConfig({
-  // base: '/',
-  base: '/embed_test7131/',
+  base: '/',
+  // base: '/embed_test7131/',
   plugins: [
     react(),
     tailwindcss(),

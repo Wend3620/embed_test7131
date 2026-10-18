@@ -1,6 +1,8 @@
 {
     "Days missing": [
-        "2025-02-26"
+        "2025-12-01",
+        "2025-12-02",
+        "2026-01-29"
     ],
-    "Percentage of anticipated granules completed": "1299/1353 = 96.01%"
+    "Percentage of anticipated granules completed": "1279/1353 = 94.53%"
 }

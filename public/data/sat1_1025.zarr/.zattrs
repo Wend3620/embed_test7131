@@ -1,5 +1,15 @@
 {
-    "description": "Gridded mean, std, count, min, max of spectral radiance binned to a 1.0\u00b0 global grid for 2025-10. time_grid entries list ctimes of all observations contributing to each cell.",
-    "satellite": "sat1",
-    "year_month": "2025-10"
+    "channels": "all",
+    "description": "SAT1 spectral radiance statistics (mean and standard deviation) for all 63 channels for 1025",
+    "grid_resolution_deg": 1.0,
+    "n_granules": 414,
+    "pass_direction": "both",
+    "percentile_range": "1st to 99th percentile used for statistics",
+    "quality_flag_values": "0",
+    "radiance_correction_applied": "yes",
+    "source": "Processed from PREFIRE-SAT1 1B-RAD R02 granules",
+    "std_definition": "population standard deviation (ddof=0); NaN where fewer than 2 observations",
+    "time": "1025",
+    "valid_range": "0.0 to 25.0 W m-2 sr-1 micron-1",
+    "wavelength_units": "micron"
 }

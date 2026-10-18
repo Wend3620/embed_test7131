@@ -11,6 +11,10 @@ export const MASK_DIR = `${window.location.origin}${import.meta.env.BASE_URL}mas
 // Files are named sat#_mmyy.zarr (e.g. sat1_1225.zarr → sat1, month 12, year 2025).
 export const zarrUrl = (sat: string, yy: string, mm: string) => `${DATA_DIR}/${sat}_${mm}${yy}.zarr`;
 
+// Variables in each store, all on a [lat, lon, spectral] grid: the mean,
+// standard deviation and observation count of spectral radiance per cell.
+export const SR_VARS = { mean: "mean_sr", std: "std_sr", count: "count_sr" };
+
 export const monthsInSeason = (season: string) => {
   switch (season) {
     case "DJF": return ["12", "01", "02"];
@@ -30,21 +34,23 @@ export interface StoreSelection {
 }
 
 // Stores to aggregate for a selection: 12 months for the annual mean, the three
-// months of a season, or the single selected month. December of a season belongs
-// to the previous year (DJF 2025 = Dec 2024, Jan 2025, Feb 2025).
+// months of a season, or the single selected month. DJF is labelled by its
+// December, so its Jan and Feb belong to the next year (DJF 2024 = Dec 2024,
+// Jan 2025, Feb 2025) — the same as the season_plots folders and use_jsons.
 export function storeUrls({ sat, year, month, mode, season, temporal = false }: StoreSelection): string[] {
   const yy = year.slice(-2);
+  const nextYy = `${parseInt(year) + 1}`.slice(-2);
+  const djf = !temporal && mode === "season" && season === "DJF";
   const months = temporal
     ? Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, "0"))
     : mode === "month"
       ? [month.padStart(2, "0")]
       : monthsInSeason(season);
-  return months.map(mm =>
-    zarrUrl(sat, parseInt(mm) === 12 && mode === "season" ? `${parseInt(year) - 1}`.slice(-2) : yy, mm));
+  return months.map(mm => zarrUrl(sat, djf && mm !== "12" ? nextYy : yy, mm));
 }
 
 // ── Observation counts ───────────────────────────────────────────────────────
-// Per-cell observation counts come from the spectral stores' spectral_radiance_count,
+// Per-cell observation counts come from the spectral stores' count_sr,
 // and are shared by every view of the selection: the brightness temperature maps
 // are built from the same observations, so the same count applies to them.
 export interface CountGrid {
@@ -69,9 +75,9 @@ export async function loadCountGrid(
 
     // The channel number indexes the 63-long spectral axis directly, the same
     // convention as SpectralPanel's HIGHLIGHT set. The `spectral` coordinate is
-    // int64, which zarr.js cannot decode, so it is deliberately never read.
+    // int64 in older stores, which zarr.js cannot decode, so it is never read.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const arr = (await root.getItem("spectral_radiance_count")) as any;
+    const arr = (await root.getItem(SR_VARS.count)) as any;
     const nd = arr.shape.length as number;
     let names: string[] = (await arr.attrs.asObject())["_ARRAY_DIMENSIONS"] ?? [];
     if (names.length !== nd) {

@@ -89,6 +89,7 @@ export default function App() {
   const [boxHemis, setBoxHemis] = useState<Record<keyof typeof emptyBoxInputs, "°N" | "°S" | "°E" | "°W">>(defaultHemis);
   const [box, setBox] = useState<{ latMin: number; latMax: number; lonMin: number; lonMax: number } | null>(null);
 
+
   const toggleHemi = (key: keyof typeof emptyBoxInputs) =>
     setBoxHemis((prev) => {
       const cur = prev[key];
@@ -138,6 +139,8 @@ export default function App() {
     if (key === "proj") setPoint(null);
   };
 
+  const fileAbbr = sel.variable === "Spectral radiance" ? 'sr' : 'bt';
+
   const dropdownKeys: OptionKey[] = ["sat", mode, "year", "channel", "proj", "var"];
 
   const allSelected: boolean = dropdownKeys.every((k) => Boolean(sel[k]));
@@ -176,16 +179,16 @@ export default function App() {
    `${timeVal.padStart(2, "0")}${sel.year.slice(-2)}` : 
    `${LONGNAME.season[sel.season]}${sel.year.slice(-2)}`;
   const BTfilename: string | null = allSelected
-    ? `bt_pics/${mode}_plots/${time_name}/${LONGNAME.sat[sel.sat]}_${timeVal}_${
+    ? `${fileAbbr}_pics/${mode}_plots/${time_name}/${LONGNAME.sat[sel.sat]}_${timeVal}_${
       sel.year}_${LONGNAME.proj[sel.proj]}_ch${LONGNAME.channel[sel.channel]}_${LONGNAME.var[sel.var] || sel.var}.webp`
     : null;
   const SRfilename: string | null = allSelected
-    ? `sr_pics/${mode}_plots/${time_name}/${LONGNAME.sat[sel.sat]}_${timeVal}_${
+    ? `${fileAbbr}_pics/${mode}_plots/${time_name}/${LONGNAME.sat[sel.sat]}_${timeVal}_${
       sel.year}_${LONGNAME.proj[sel.proj]}_ch${LONGNAME.channel[sel.channel]}_${LONGNAME.var[sel.var] || sel.var}.webp`
     : null;
   
   const CTfilename: string | null = allSelected
-    ? `sr_pics/count_plots/${time_name}/${LONGNAME.sat[sel.sat]}_${timeVal}_${
+    ? `${fileAbbr}_pics/count_plots/${time_name}/${LONGNAME.sat[sel.sat]}_${timeVal}_${
       sel.year}_${LONGNAME.proj[sel.proj]}_ch${LONGNAME.channel[sel.channel]}_count.webp`
     : null;
   // Professional unlocks the spectral plot and the variable choice; Lite is brightness temperature only.
@@ -437,12 +440,13 @@ export default function App() {
                 ))}
               </div>
               {/* Observation count map, pinned to the bottom of the panel */}
-              <div className="iv-info-map">
-                <div className="iv-info-map-title">Observation counts distribution:</div>
-                {!CTfilename || CTfilename === erroredCountFile ? (
-                  <div className="iv-info-map-msg">Count map unavailable</div>
-                ) : (
-                  <img
+              {mode === "month" && (
+                <div className="iv-info-map">
+                  <div className="iv-info-map-title">Observation counts distribution:</div>
+                  {!CTfilename || CTfilename === erroredCountFile ? (
+                    <div className="iv-info-map-msg">Count map unavailable</div>
+                  ) : (
+                    <img
                     src={CTfilename}
                     alt="Observation count map"
                     className="iv-info-map-img"
@@ -450,6 +454,7 @@ export default function App() {
                   />
                 )}
               </div>
+              )}
             </div>
             )}
             <div
