@@ -1,12 +1,14 @@
 import { openGroup, HTTPStore } from "zarr";
 
 // ── Data source ──────────────────────────────────────────────────────────────
-// Public assets are served from ./public, so data is available at /data.
-// Use an absolute URL to avoid Invalid URL errors in URL constructors.
-// BASE_URL is "/embed_test7131/" in the deployed build and "/" in dev (it always
-// has a trailing slash), so this resolves to the correct subpath on GitHub Pages.
-export const DATA_DIR = `${window.location.origin}${import.meta.env.BASE_URL}data`;
-export const MASK_DIR = `${window.location.origin}${import.meta.env.BASE_URL}masks`;
+// The zarr stores live in public/data and the masks in public/masks; `vite build`
+// copies both into dist/ (dist/data, dist/masks). They are fetched relative to
+// index.html, like the map images, so the app finds them wherever dist/ is hosted,
+// including under a subpath. URLs are made absolute because zarr's HTTPStore
+// builds further URLs from them.
+export const pageUrl = (p: string) => new URL(p, document.baseURI).href;
+export const DATA_DIR = pageUrl("data");
+export const MASK_DIR = pageUrl("masks");
 
 // Files are named sat#_mmyy.zarr (e.g. sat1_1225.zarr → sat1, month 12, year 2025).
 export const zarrUrl = (sat: string, yy: string, mm: string) => `${DATA_DIR}/${sat}_${mm}${yy}.zarr`;

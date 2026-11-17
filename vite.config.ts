@@ -14,10 +14,11 @@ export default defineConfig({
     {
       name: 'serve-data-dir',
       configureServer(server) {
-        // Serves ./data (every zarr store) in dev. The app requests data under
-        // `base`, so match that as well as a bare /data/; unmatched requests fall
-        // through to Vite, which would serve zarr metadata as JS modules.
-        const dataDir = path.join(__dirname, 'data');
+        // Serves public/data (every zarr store) in dev, with JSON MIME types for
+        // the zarr metadata dotfiles. `vite build` copies the same folder to
+        // dist/data, so dev and build read one source. Match requests under
+        // `base` as well as a bare /data/; anything not found falls through to Vite.
+        const dataDir = path.join(__dirname, 'public', 'data');
         const prefixes = [`${server.config.base}data/`, '/data/'];
         server.middlewares.use((req: any, res: any, next: any) => {
           const urlPath = req.url?.split('?')[0] ?? '';

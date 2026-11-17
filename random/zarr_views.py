@@ -69,8 +69,11 @@ from processor import (  # noqa: E402
     lon_mids,
 )
 
-DATA_DIR = Path(__file__).resolve().parent.parent / 'data'
-MASK_FILE = DATA_DIR / 'GRE_mask.npy'
+# Defaults only: --data-dir / data_dir= pick another folder. This script reads the
+# old store layout (spectral_radiance, ...) and BT NetCDFs in <data_dir>/BT, both
+# of which are in data_other/, so re-render with --data-dir data_other.
+DATA_DIR = Path(__file__).resolve().parent.parent / 'public' / 'data'
+MASK_FILE = Path(__file__).resolve().parent.parent / 'public' / 'masks' / 'GRE_mask.npy'
 OUT_DIR = Path(__file__).resolve().parent.parent / 'gallery' / 'zarr_views'
 
 MONTH_ABBR = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',

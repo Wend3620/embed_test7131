@@ -1,7 +1,0 @@
-{
-    "_ARRAY_DIMENSIONS": [
-        "lat"
-    ],
-    "long_name": "Latitude of grid-cell centre",
-    "units": "degrees_north"
-}

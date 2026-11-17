@@ -1,6 +1,0 @@
-{
-    "_ARRAY_DIMENSIONS": [
-        "spectral"
-    ],
-    "long_name": "Channel index (0-based position in the 1B-RAD spectral dimension)"
-}

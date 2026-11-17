@@ -4,6 +4,8 @@
 // and each view's projection come from public/map_frames.json, written by
 // random/map_frames.py (re-run it when new images are added).
 
+import { pageUrl } from "./zarrSource";
+
 type Box = [number, number, number, number];   // x0, y0, x1, y1 — inclusive image px
 
 interface OrthoView {
@@ -29,7 +31,7 @@ let framesPromise: Promise<MapFrames> | null = null;
 
 export function loadMapFrames(): Promise<MapFrames> {
   if (!framesPromise) {
-    framesPromise = fetch(`${window.location.origin}${import.meta.env.BASE_URL}map_frames.json`)
+    framesPromise = fetch(pageUrl("map_frames.json"))
       .then((r) => {
         if (!r.ok) throw new Error(`map_frames.json: HTTP ${r.status}`);
         return r.json() as Promise<MapFrames>;

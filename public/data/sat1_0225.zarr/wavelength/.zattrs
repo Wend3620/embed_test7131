@@ -1,7 +1,0 @@
-{
-    "_ARRAY_DIMENSIONS": [
-        "spectral"
-    ],
-    "long_name": "Channel centre wavelength (mean over xtrack and granules)",
-    "units": "micron"
-}

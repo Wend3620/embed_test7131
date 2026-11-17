@@ -1,7 +1,0 @@
-{
-    "_ARRAY_DIMENSIONS": [
-        "lon"
-    ],
-    "long_name": "Longitude of grid-cell centre",
-    "units": "degrees_east"
-}
